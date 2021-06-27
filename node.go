@@ -80,7 +80,7 @@ func (n *Node) Run() {
 	if n.ID == 0 {
 		n.allocateSubpartition()
 	}
-
+	n.Logger.Println(n.SubPartition)
 }
 
 func (n *Node) Listen() {
@@ -113,7 +113,8 @@ func (n *Node) interfaceMsgHandler(msg Msg) {
 }
 
 func (n *Node) subpartitionMsgHandler(msg Msg) {
-	// n.Logger.Println("received subpartition from", msg.Src, msg.Payload)
+	n.Logger.Println("received subpartition from", msg.Src, msg.Payload)
+
 	n.SubPartition = msg.Payload
 	n.allocateSubpartition()
 }
@@ -160,15 +161,19 @@ func (n *Node) compositeInterface() {
 
 func (n *Node) allocateSubpartition() {
 	if n.ID == 0 {
+		var redundant = 2
 		var slotIdx = 0
 		for l := MaxLayer; l > 0; l-- {
-			n.SubPartition[l] = []int{slotIdx, slotIdx + n.Interface[l][0], 1, 9}
-			slotIdx += n.Interface[l][0]
+			n.SubPartition[l] = []int{slotIdx, slotIdx + redundant + n.Interface[l][0], 1, 9}
+			slotIdx += redundant + n.Interface[l][0]
 		}
 	}
 
-	for l := n.Layer + 2; l <= MaxLayer; l++ {
-		var chIdx = 1
+	for l := n.Layer + 1; l <= MaxLayer; l++ {
+		if n.SubPartition[l] == nil {
+			continue
+		}
+		var chIdx = n.SubPartition[l][2]
 		for _, c := range n.Children {
 			if c.Interface[l] != nil {
 				if c.Interface[l][0] == 0 && c.Interface[l][1] == 0 {
@@ -183,5 +188,4 @@ func (n *Node) allocateSubpartition() {
 	for _, c := range n.Children {
 		n.sendTo(c.ID, MSG_SP, c.SubPartition)
 	}
-	n.Logger.Println(n.SubPartition)
 }

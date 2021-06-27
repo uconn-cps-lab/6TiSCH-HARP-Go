@@ -43,7 +43,8 @@ type topoData2 struct {
 }
 
 func postTopo(ctx *sweetygo.Context) error {
-
+	Nodes = map[int]*Node{}
+	MaxLayer = 0
 	var topo topoData
 	for k := range ctx.Params() {
 		json.Unmarshal([]byte(k), &topo)
