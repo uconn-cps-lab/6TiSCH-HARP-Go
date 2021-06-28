@@ -48,7 +48,7 @@ import "echarts/lib/component/markLine";
 import "echarts/lib/component/dataZoom";
 import "echarts/lib/chart/graph"
 
-const SLOTFRAME = 80
+const SLOTFRAME = 100
 const CHANNELS = [1,2,3,4,5,6,7,8]
 
 export default {
@@ -65,6 +65,7 @@ export default {
       links: {},
       topo: [],
       seq:[],
+      hp_res:{},
       bcnSubslots: {},
       nonOptimalCnt:0,
       nonOptimalList: [],
@@ -260,15 +261,25 @@ export default {
     }
   },
   methods: {
-    drawSubPartition() {
+    getHPRes() {
       this.$api.partition.getNodes()
       .then(res=>{
-        if(res.data.flag!=1) return -1
-        
+          if(res.data.flag!=1) return -1
+          if(this.layer==0) {
+            this.option.series[2].markArea.data = []
+          }
+          this.$EventBus.$emit("hp_res", res.data.data)
+          this.hp_res = res.data.data
+          this.drawSubPartition()
+          this.layer++
+        }
+      )
+    },
+    drawSubPartition() {
         var colors = ['smokewhite','red','orange', 'yellow','#05c54e','lightblue','purple']
 
-        for(var i in res.data.data) {
-          var node = res.data.data[i]
+        for(var i in this.hp_res) {
+          var node = this.hp_res[i]
           if(node.layer != this.layer) continue
 
           for(var l in node.subpartition) {
@@ -294,8 +305,6 @@ export default {
             ])
           }
         }
-      
-      })
     },
     handleHPBt() {
       this.drawSubPartition()
@@ -304,7 +313,12 @@ export default {
   },
 
   mounted() {
-    setTimeout(this.drawSubPartition, 500)
+    this.$EventBus.$on("postTopo", ()=>{
+      window.console.log("topo posted")
+      this.getHPRes()
+
+      this.layer = 0
+    })
 
   },
 }

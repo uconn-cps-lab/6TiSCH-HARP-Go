@@ -5,29 +5,37 @@ import (
 )
 
 var (
-	Nodes    = map[int]*Node{}
-	sig      = make(chan int)
+	Nodes    map[int]*Node
+	sig1     = make(chan int)
+	sig2     = make(chan int)
 	MaxLayer = 0
 )
 
 func main() {
 	go func() {
 		for {
-			signal := <-sig
+			signal := <-sig1
 			if signal == 1 {
 				buildTopo()
-
+				blockers := make(chan bool, len(Nodes))
 				for _, n := range Nodes {
-					go n.Run()
+					blockers <- true
+					go n.Run(blockers)
 				}
+				for i := 0; i < cap(blockers); i++ {
+					blockers <- true
+				}
+				fmt.Println("HP finished")
+				sig2 <- 2
 			}
+
 		}
 	}()
-
 	runHTTPServer()
 }
 
 func buildTopo() {
+
 	for _, n := range Nodes {
 		if n.Layer > MaxLayer {
 			MaxLayer = n.Layer

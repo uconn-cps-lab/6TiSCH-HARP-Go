@@ -335,6 +335,12 @@ export default {
       this.findParents();
       setTimeout(()=>{
         this.$EventBus.$emit("topo", { data: this.nodes, seq: this.join_seq });
+        this.$api.partition.postTopo(this.nodes).then(
+          ()=> {
+            this.$EventBus.$emit("postTopo",true)
+          }
+        )
+
       },100)
     },
     findParents() {
@@ -643,8 +649,8 @@ export default {
   mounted() {
     window.grid = this;
     // this.$EventBus.$on("init", () => {
-      this.draw();
-    this.$api.partition.postTopo(this.nodes)
+    this.draw();
+    
     // });
   },
 };

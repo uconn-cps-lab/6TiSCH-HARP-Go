@@ -19,26 +19,24 @@ export default {
   },
   data() {
     return {
+      hp: {},
       selectedGW: "any",
       selectedRange: "day",
       selectedSensor: {},
       topo: [],
       trees: {},
-      // from table.sch
-      topo_tree: {},
       option: {
-        // tooltip: {
-        //   formatter: (item)=>{
-        //     var table = this.topo_tree[item.name].resource_table
-        //     var s = ''
-        //     for(var i in table) {
-        //       if(table[i].slots==0&&table[i].channels==0) continue
+        tooltip: {
+          formatter: (item)=>{
+            var node = this.hp[item.name]
+            var s = ''
+            for(var i in node.interface) {
+              s+= i+" - ["+node.interface[i][0]+", "+node.interface[i][1]+"]<br>"
+            }
 
-        //       s+= i+" - ["+table[i].slots+", "+table[i].channels+"]<br>"
-        //     }
-        //     return s
-        //   }
-        // },
+            return s
+          }
+        },
         series: [
           {
             type: 'tree',
@@ -109,8 +107,8 @@ export default {
       this.draw()
     });
 
-    this.$EventBus.$on("topo_tree", (topo_tree) => {
-      this.topo_tree = topo_tree
+    this.$EventBus.$on("hp_res", (res) => {
+      this.hp = res
     })
   }
 }

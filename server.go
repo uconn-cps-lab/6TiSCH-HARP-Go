@@ -55,7 +55,8 @@ func postTopo(ctx *sweetygo.Context) error {
 	}
 
 	// fmt.Println(len(Nodes))
-	sig <- 1
+	sig1 <- 1
+	<-sig2
 	return ctx.Text(200, "123")
 }
 

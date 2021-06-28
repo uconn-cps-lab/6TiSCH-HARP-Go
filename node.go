@@ -62,7 +62,8 @@ func NewChild(id, traffic int) *Child {
 	}
 }
 
-func (n *Node) Run() {
+func (n *Node) Run(blocker chan bool) {
+	defer func() { <-blocker }()
 	go n.Listen()
 
 	// bottom-up collect resource interfaces
@@ -71,16 +72,19 @@ func (n *Node) Run() {
 		n.reportInterface()
 	}
 	// wait all children's interfaces
-	<-n.sig
-	n.compositeInterface()
-	n.reportInterface()
-	n.Logger.Println("resource interface:", n.Interface)
+	if len(n.Children) > 0 {
+		<-n.sig
+		n.compositeInterface()
+		n.reportInterface()
+		// n.Logger.Println("resource interface:", n.Interface)
 
-	// top-down allocate sub-partitions
-	if n.ID == 0 {
-		n.allocateSubpartition()
+		// top-down allocate sub-partitions
+		if n.ID == 0 {
+			n.allocateSubpartition()
+		}
+		// n.Logger.Println("sub-partition:", n.SubPartition)
 	}
-	n.Logger.Println(n.SubPartition)
+
 }
 
 func (n *Node) Listen() {
@@ -98,7 +102,6 @@ func (n *Node) Listen() {
 
 func (n *Node) sendTo(dst, msgType int, payload map[int][]int) {
 	msg := Msg{n.ID, dst, msgType, payload}
-
 	Nodes[dst].RXCh <- msg
 }
 
@@ -113,7 +116,7 @@ func (n *Node) interfaceMsgHandler(msg Msg) {
 }
 
 func (n *Node) subpartitionMsgHandler(msg Msg) {
-	n.Logger.Println("received subpartition from", msg.Src, msg.Payload)
+	// n.Logger.Println("received subpartition from", msg.Src, msg.Payload)
 
 	n.SubPartition = msg.Payload
 	n.allocateSubpartition()
@@ -161,7 +164,7 @@ func (n *Node) compositeInterface() {
 
 func (n *Node) allocateSubpartition() {
 	if n.ID == 0 {
-		var redundant = 2
+		var redundant = 5
 		var slotIdx = 0
 		for l := MaxLayer; l > 0; l-- {
 			n.SubPartition[l] = []int{slotIdx, slotIdx + redundant + n.Interface[l][0], 1, 9}
@@ -186,6 +189,8 @@ func (n *Node) allocateSubpartition() {
 		}
 	}
 	for _, c := range n.Children {
+		// if len(c.SubPartition) > 0 {
 		n.sendTo(c.ID, MSG_SP, c.SubPartition)
+		// }
 	}
 }
