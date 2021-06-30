@@ -49,7 +49,7 @@ import "echarts/lib/component/dataZoom";
 import "echarts/lib/chart/graph"
 
 const SLOTFRAME = 65
-const CHANNELS = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
+const CHANNELS = [1,2,3,4,5,6,7,8]
 
 export default {
   components: {
@@ -73,7 +73,7 @@ export default {
       option: {
         toolbox:{
           feature:{
-            // saveAsImage:{}
+            saveAsImage:{}
           }
         },
         tooltip: {
@@ -103,7 +103,7 @@ export default {
           }
         },
         grid: {
-          top: '20%',
+          top: '12%',
           // height: '78%',
           left: '3%',
           right: '1%',
@@ -346,5 +346,5 @@ export default {
 #sch-table
 
   width 100%
-  height 500px
+  height 400px
 </style>

@@ -93,7 +93,7 @@ import "echarts/lib/chart/scatter";
 import "echarts/lib/chart/effectScatter";
 import "echarts/lib/component/markLine";
 import "echarts/lib/component/toolbox";
-import nodes from "./nodes65.json";
+import nodes from "./nodes65-2.json";
 // import noiseList from "./noiseList.json";
 
 

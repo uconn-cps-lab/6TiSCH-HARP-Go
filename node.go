@@ -51,7 +51,7 @@ type Child struct {
 	ID                 int
 	Traffic            int
 	Interface          map[int][]int
-	SubPartitionOffset map[int][]int // output of interface composition, logical location; right->left, bottom->top
+	SubPartitionOffset map[int][]int // output of interface composition, logical location; left->right, bottom->top
 	SubPartition       map[int][]int // output of sub-partition allocation, physical location
 }
 
@@ -79,13 +79,13 @@ func (n *Node) Run(blocker chan bool) {
 		<-n.sig
 		n.compositeInterface()
 		n.reportInterface()
-		n.Logger.Println("resource interface:", n.Interface)
+		// n.Logger.Println("resource interface:", n.Interface)
 
 		// top-down allocate sub-partitions
 		if n.ID == 0 {
 			n.allocateSubpartition()
 		}
-		n.Logger.Println("sub-partition:", n.SubPartition)
+		// n.Logger.Println("sub-partition:", n.SubPartition)
 	}
 
 }
@@ -119,7 +119,7 @@ func (n *Node) interfaceMsgHandler(msg Msg) {
 }
 
 func (n *Node) subpartitionMsgHandler(msg Msg) {
-	// n.Logger.Println("received subpartition from", msg.Src, msg.Payload)
+	n.Logger.Println("received subpartition from", msg.Src, msg.Payload)
 
 	n.SubPartition = msg.Payload
 	n.allocateSubpartition()
@@ -151,8 +151,9 @@ func (n *Node) reportInterface() {
 // https://en.wikipedia.org/wiki/Strip_packing_problem
 // https://en.wikipedia.org/wiki/Rectangle_packing#Packing_different_rectangles_in_a_minimum-area_rectangle
 func (n *Node) compositeInterface() {
-	n.packingGreedyChannel()
+	// n.packingGreedyChannel()
 	// n.packingFFDH()
+	n.packingBestFitSkyline()
 }
 
 func (n *Node) packingGreedyChannel() {
@@ -179,7 +180,7 @@ func (n *Node) packingGreedyChannel() {
 				slots = c.Interface[l][0]
 			}
 
-			c.SubPartitionOffset[l] = []int{c.Interface[l][0], 0, channels, channels + c.Interface[l][1]}
+			c.SubPartitionOffset[l] = []int{0, c.Interface[l][0], channels, channels + c.Interface[l][1]}
 
 			// channels = sum of children's channels
 			channels += c.Interface[l][1]
@@ -225,7 +226,7 @@ func (n *Node) packingFFDH() {
 
 		// find the children with longest slot range, and place it at the bottom, as the width bound
 		var child = childrenSlice[0]
-		child.SubPartitionOffset[l] = []int{child.Interface[l][0], 0, channels, channels + child.Interface[l][1]}
+		child.SubPartitionOffset[l] = []int{0, child.Interface[l][0], channels, channels + child.Interface[l][1]}
 		slots = child.Interface[l][0]
 		channels += child.Interface[l][1]
 		if len(childrenSlice) == 1 {
@@ -243,7 +244,7 @@ func (n *Node) packingFFDH() {
 		levels := make(map[int]*level)
 		for i, c := range childrenSlice {
 			if i == 0 {
-				c.SubPartitionOffset[l] = []int{c.Interface[l][0], 0, channels, channels + c.Interface[l][1]}
+				c.SubPartitionOffset[l] = []int{0, c.Interface[l][0], channels, channels + c.Interface[l][1]}
 				levels[0] = &level{
 					idleSlots:    slots - c.Interface[l][0],
 					slotEdge:     c.Interface[l][0],
@@ -257,7 +258,7 @@ func (n *Node) packingFFDH() {
 				for lv := 0; lv < len(levels); lv++ {
 					v := levels[lv]
 					if v.idleSlots >= c.Interface[l][0] {
-						c.SubPartitionOffset[l] = []int{v.slotEdge + c.Interface[l][0], v.slotEdge, v.channelStart, v.channelStart + c.Interface[l][1]}
+						c.SubPartitionOffset[l] = []int{v.slotEdge, v.slotEdge + c.Interface[l][0], v.channelStart, v.channelStart + c.Interface[l][1]}
 						v.slotEdge += c.Interface[l][0]
 						v.idleSlots -= c.Interface[l][0]
 						found = true
@@ -267,7 +268,7 @@ func (n *Node) packingFFDH() {
 				if !found { // create a new level
 					var h = levels[len(levels)-1].channelEnd
 
-					c.SubPartitionOffset[l] = []int{c.Interface[l][0], 0, h, h + c.Interface[l][1]}
+					c.SubPartitionOffset[l] = []int{0, c.Interface[l][0], h, h + c.Interface[l][1]}
 					levels[len(levels)] = &level{
 						idleSlots:    slots - c.Interface[l][0],
 						slotEdge:     c.Interface[l][0],
@@ -283,6 +284,100 @@ func (n *Node) packingFFDH() {
 	}
 }
 
+type skyline struct {
+	width  int
+	start  int
+	end    int
+	height int
+}
+
+// Best-Fit skyline strip packing
+// The best-fit heuristic for the rectangular strip packing problem: An efficient implementation and the worst-case approximation ratio
+func (n *Node) packingBestFitSkyline() {
+	for l := MaxLayer; l > n.Layer+1; l-- {
+		var slots = 0
+		var channels = 0
+
+		// sort children by slot range, decreasing
+		var childrenSlice = []*Child{}
+		for _, c := range n.Children {
+			if c.Interface[l] != nil {
+				if c.Interface[l][0] != 0 {
+					childrenSlice = append(childrenSlice, c)
+				}
+			}
+		}
+		if len(childrenSlice) == 0 {
+			continue
+		}
+		sort.SliceStable(childrenSlice, func(i, j int) bool {
+			return childrenSlice[i].Interface[l][0] > childrenSlice[j].Interface[l][0]
+		})
+
+		// find the children with longest slot range, and place it at the bottom, as the width bound
+		var child = childrenSlice[0]
+		child.SubPartitionOffset[l] = []int{0, child.Interface[l][0], channels, channels + child.Interface[l][1]}
+		slots = child.Interface[l][0]
+		channels += child.Interface[l][1]
+		if len(childrenSlice) == 1 {
+			n.Interface[l] = []int{slots, channels}
+			continue
+		}
+		childrenSlice = childrenSlice[1:]
+
+		skylines := []*skyline{}
+		skylines = append(skylines, &skyline{
+			width:  slots,
+			start:  0,
+			end:    slots,
+			height: channels,
+		})
+
+		for _, c := range childrenSlice {
+			sort.SliceStable(skylines, func(i, j int) bool {
+				if skylines[i].height < skylines[j].height {
+					return true
+				}
+				if skylines[i].height == skylines[j].height {
+					return skylines[i].start < skylines[j].start
+				}
+				return false
+
+			})
+			if n.ID == 0 && l == 3 {
+				for _, s := range skylines {
+					fmt.Printf("%v", *s)
+				}
+				fmt.Println()
+			}
+			for _, s := range skylines {
+				if s.width >= c.Interface[l][0] {
+					c.SubPartitionOffset[l] = []int{s.start, s.start + c.Interface[l][0], s.height, s.height + c.Interface[l][1]}
+
+					// create a new skyline, remaining part
+					skylines = append(skylines, &skyline{
+						width:  s.width - c.Interface[l][0],
+						start:  s.start + c.Interface[l][0],
+						end:    s.end,
+						height: s.height,
+					})
+					// update the used skyline
+					s.end = s.start + c.Interface[l][0]
+					s.width = c.Interface[l][0]
+					s.height += c.Interface[l][1]
+					break
+				}
+			}
+		}
+		for _, s := range skylines {
+			if channels < s.height {
+				channels = s.height
+			}
+		}
+		n.Interface[l] = []int{slots, channels}
+	}
+}
+
 func (n *Node) allocateSubpartition() {
 	if n.ID == 0 {
 		var redundant = 5
@@ -291,7 +386,7 @@ func (n *Node) allocateSubpartition() {
 			if n.Interface[l] == nil {
 				continue
 			}
-			n.SubPartition[l] = []int{slotIdx, slotIdx + redundant + n.Interface[l][0], 1, 17}
+			n.SubPartition[l] = []int{slotIdx, slotIdx + redundant + n.Interface[l][0], 1, 9}
 			slotIdx += redundant + n.Interface[l][0]
 		}
 	}
@@ -304,8 +399,8 @@ func (n *Node) allocateSubpartition() {
 		for _, c := range n.Children {
 			if c.SubPartitionOffset[l] != nil {
 				c.SubPartition[l] = []int{
-					n.SubPartition[l][1] - c.SubPartitionOffset[l][0],
-					n.SubPartition[l][1] - c.SubPartitionOffset[l][1],
+					n.SubPartition[l][0] + c.SubPartitionOffset[l][0],
+					n.SubPartition[l][0] + c.SubPartitionOffset[l][1],
 					n.SubPartition[l][3] - c.SubPartitionOffset[l][3],
 					n.SubPartition[l][3] - c.SubPartitionOffset[l][2],
 				}
