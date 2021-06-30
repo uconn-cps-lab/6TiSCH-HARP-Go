@@ -119,7 +119,7 @@ func (n *Node) interfaceMsgHandler(msg Msg) {
 }
 
 func (n *Node) subpartitionMsgHandler(msg Msg) {
-	n.Logger.Println("received subpartition from", msg.Src, msg.Payload)
+	// n.Logger.Println("received subpartition from", msg.Src, msg.Payload)
 
 	n.SubPartition = msg.Payload
 	n.allocateSubpartition()
@@ -203,6 +203,7 @@ type level struct {
 }
 
 // First-Fit Decreasing Height for strip packing, with level concept
+// Coffman, Jr, Edward G., et al. "Performance bounds for level-oriented two-dimensional packing algorithms." SIAM Journal on Computing 9.4 (1980): 808-826.
 func (n *Node) packingFFDH() {
 	for l := MaxLayer; l > n.Layer+1; l-- {
 		var slots = 0
@@ -285,14 +286,14 @@ func (n *Node) packingFFDH() {
 }
 
 type skyline struct {
-	width  int
 	start  int
 	end    int
+	width  int
 	height int
 }
 
 // Best-Fit skyline strip packing
-// The best-fit heuristic for the rectangular strip packing problem: An efficient implementation and the worst-case approximation ratio
+// Burke, Edmund K., Graham Kendall, and Glenn Whitwell. "A new placement heuristic for the orthogonal stock-cutting problem." Operations Research 52.4 (2004): 655-671.
 func (n *Node) packingBestFitSkyline() {
 	for l := MaxLayer; l > n.Layer+1; l-- {
 		var slots = 0
@@ -327,13 +328,29 @@ func (n *Node) packingBestFitSkyline() {
 
 		skylines := []*skyline{}
 		skylines = append(skylines, &skyline{
-			width:  slots,
 			start:  0,
 			end:    slots,
+			width:  slots,
 			height: channels,
 		})
 
-		for _, c := range childrenSlice {
+	L1:
+
+		for len(childrenSlice) > 0 {
+			// sort skylines from left to right
+			sort.SliceStable(skylines, func(i, j int) bool {
+				return skylines[i].start < skylines[j].start
+			})
+			// concat lines
+			for i := 0; i < len(skylines)-1; i++ {
+				if skylines[i].height == skylines[i+1].height && skylines[i].end == skylines[i+1].start {
+					skylines[i].end = skylines[i+1].end
+					skylines[i].width += skylines[i+1].width
+					skylines = append(skylines[:i+1], skylines[i+2:]...)
+				}
+			}
+
+			// sort by height, increasing order
 			sort.SliceStable(skylines, func(i, j int) bool {
 				if skylines[i].height < skylines[j].height {
 					return true
@@ -342,34 +359,63 @@ func (n *Node) packingBestFitSkyline() {
 					return skylines[i].start < skylines[j].start
 				}
 				return false
-
 			})
-			if n.ID == 0 && l == 3 {
-				for _, s := range skylines {
-					fmt.Printf("%v", *s)
-				}
-				fmt.Println()
-			}
-			for _, s := range skylines {
-				if s.width >= c.Interface[l][0] {
-					c.SubPartitionOffset[l] = []int{s.start, s.start + c.Interface[l][0], s.height, s.height + c.Interface[l][1]}
 
-					// create a new skyline, remaining part
-					skylines = append(skylines, &skyline{
-						width:  s.width - c.Interface[l][0],
-						start:  s.start + c.Interface[l][0],
-						end:    s.end,
-						height: s.height,
-					})
-					// update the used skyline
-					s.end = s.start + c.Interface[l][0]
-					s.width = c.Interface[l][0]
-					s.height += c.Interface[l][1]
-					break
+			// place child to the best fit skyline
+			for _, s := range skylines {
+
+				var hasFit bool
+				for j, c := range childrenSlice {
+					if s.width >= c.Interface[l][0] {
+						// if n.ID == 0 {
+						// 	fmt.Println("place", c.ID, "on", *s)
+						// }
+						c.SubPartitionOffset[l] = []int{s.start, s.start + c.Interface[l][0], s.height, s.height + c.Interface[l][1]}
+						childrenSlice = append(childrenSlice[:j], childrenSlice[j+1:]...)
+
+						// create a new skyline, remaining part
+						skylines = append(skylines, &skyline{
+							start:  s.start + c.Interface[l][0],
+							end:    s.end,
+							width:  s.width - c.Interface[l][0],
+							height: s.height,
+						})
+						// update the used skyline
+						s.end = s.start + c.Interface[l][0]
+						s.width = c.Interface[l][0]
+						s.height += c.Interface[l][1]
+
+						hasFit = true
+						break
+					}
 				}
+
+				if !hasFit {
+					// increase height to align with its lowest neighbor
+					var left, right = 16, 16
+					for _, ss := range skylines {
+						if ss.end == s.start {
+							left = ss.height
+						} else if ss.start == s.end {
+							right = ss.height
+						}
+					}
+					if left <= right {
+						s.height = left
+
+					} else if right < left {
+						s.height = right
+					}
+
+				}
+
+				goto L1
 			}
 		}
 		for _, s := range skylines {
+			// if n.ID == 0 {
+			// 	n.Logger.Println(l, *s)
+			// }
 			if channels < s.height {
 				channels = s.height
 			}
@@ -378,6 +424,7 @@ func (n *Node) packingBestFitSkyline() {
 	}
 }
 
+// map logical sub-partition offset to physcial sub-partition locations
 func (n *Node) allocateSubpartition() {
 	if n.ID == 0 {
 		var redundant = 5
@@ -386,7 +433,7 @@ func (n *Node) allocateSubpartition() {
 			if n.Interface[l] == nil {
 				continue
 			}
-			n.SubPartition[l] = []int{slotIdx, slotIdx + redundant + n.Interface[l][0], 1, 9}
+			n.SubPartition[l] = []int{slotIdx, slotIdx + redundant + n.Interface[l][0], 1, 17}
 			slotIdx += redundant + n.Interface[l][0]
 		}
 	}
