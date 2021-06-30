@@ -48,8 +48,8 @@ import "echarts/lib/component/markLine";
 import "echarts/lib/component/dataZoom";
 import "echarts/lib/chart/graph"
 
-const SLOTFRAME = 100
-const CHANNELS = [1,2,3,4,5,6,7,8]
+const SLOTFRAME = 65
+const CHANNELS = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
 
 export default {
   components: {
@@ -116,7 +116,7 @@ export default {
           minInterval: 1,
           axisLabel: {
             formatter: (item)=>{
-              if(item%1==0) 
+              if(item%5==0) 
                 return item
             },
             fontSize:10,
@@ -276,7 +276,7 @@ export default {
       )
     },
     drawSubPartition() {
-        var colors = ['smokewhite','red','orange', 'yellow','#05c54e','lightblue','purple']
+        var colors = ['smokewhite','grey','orange', 'yellow','#05c54e','lightblue','purple']
 
         for(var i in this.hp_res) {
           var node = this.hp_res[i]
@@ -287,14 +287,15 @@ export default {
             if(node.subpartition[l]==null) continue
             this.option.series[2].markArea.data.push([
               {
-                name: "SP("+node.id+", "+l+")",
+                // name: "SP("+node.id+", "+l+")",
+                name: node.id.toString(),
                 itemStyle: {
                   color:colors[node.layer+1], 
                   opacity:1, 
                   borderColor:"black",
                   borderWidth:2
                 },
-                label:{color:"black",fontWeight:"bold",fontSize:10.5, position:"inside"},
+                label:{color:"black",fontWeight:"bold",fontSize:13, position:"inside"},
                 xAxis: node.subpartition[l][0],
                 yAxis: node.subpartition[l][2],
               },
@@ -316,7 +317,6 @@ export default {
     this.$EventBus.$on("postTopo", ()=>{
       window.console.log("topo posted")
       this.getHPRes()
-
       this.layer = 0
     })
 
@@ -346,5 +346,5 @@ export default {
 #sch-table
 
   width 100%
-  height 280px
+  height 500px
 </style>
