@@ -454,10 +454,6 @@ func (n *Node) packingBestFitSkyline() {
 			})
 
 		L2:
-			for _, c := range childrenSlice {
-				n.Logger.Println(l, c.ID, c.Interface[l])
-			}
-
 			for len(childrenSlice) > 0 {
 				// sort skylines from start to end
 				sort.SliceStable(skylines, func(i, j int) bool {
@@ -537,10 +533,8 @@ func (n *Node) packingBestFitSkyline() {
 					slots = s.height
 				}
 			}
-			n.Interface[l] = []int{slots, channels}
 		}
 		n.Interface[l] = []int{slots, channels}
-		n.Logger.Println("interface:", l, n.Interface[l])
 	}
 }
 
@@ -562,15 +556,14 @@ func (n *Node) allocateSubpartition() {
 		if n.SubPartition[l] == nil {
 			continue
 		}
-
 		for _, c := range n.Children {
 
 			if c.Interface[l] != nil && c.SubPartitionOffset[l] != nil {
 				c.SubPartition[l] = []int{
 					n.SubPartition[l][0] + c.SubPartitionOffset[l][0],
 					n.SubPartition[l][0] + c.SubPartitionOffset[l][1],
-					n.SubPartition[l][3] - c.SubPartitionOffset[l][2],
 					n.SubPartition[l][3] - c.SubPartitionOffset[l][3],
+					n.SubPartition[l][3] - c.SubPartitionOffset[l][2],
 				}
 			}
 		}
