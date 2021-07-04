@@ -278,6 +278,7 @@ export default {
       )
     },
     drawSubPartition() {
+        this.$EventBus.$emit("current_layer", this.layer)
         var colors = ['smokewhite','grey','orange', 'yellow','#05c54e','lightblue','purple']
 
         for(var i in this.hp_res) {
