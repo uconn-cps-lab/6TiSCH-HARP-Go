@@ -16,6 +16,7 @@ type Node struct {
 	Interface    map[int][]int  `json:"interface"`    // resource interface [slots, channels]
 	SubPartition map[int][]int  `json:"subpartition"` // allocated sub-partition [slots start&end, channels start&end]
 
+	maxChannel           int `json:"-"`
 	receivedInterfaceCnt int
 
 	// internal signal
@@ -39,9 +40,10 @@ func NewNode(id, parent, layer int) *Node {
 		Traffic:      traffic,
 		Interface:    make(map[int][]int),
 		SubPartition: make(map[int][]int),
+		maxChannel:   MAX_CHANNEL,
 		sig:          make(chan int),
 		RXCh:         make(chan Msg, 8),
-		Logger:       log.New(os.Stdout, fmt.Sprintf("[+] #%d ", id), 0),
+		Logger:       log.New(os.Stdout, fmt.Sprintf("[#%d] ", id), 0),
 	}
 	return node
 }
@@ -312,7 +314,12 @@ func (n *Node) packingBestFitSkyline() {
 			continue
 		}
 		sort.SliceStable(childrenSlice, func(i, j int) bool {
-			return childrenSlice[i].Interface[l][0] > childrenSlice[j].Interface[l][0]
+			if childrenSlice[i].Interface[l][0] > childrenSlice[j].Interface[l][0] {
+				return true
+			} else if childrenSlice[i].Interface[l][0] == childrenSlice[j].Interface[l][0] {
+				return childrenSlice[i].Interface[l][1] > childrenSlice[j].Interface[l][1]
+			}
+			return false
 		})
 
 		// find the children with longest slot range, and place it at the bottom, as the width bound
@@ -335,9 +342,8 @@ func (n *Node) packingBestFitSkyline() {
 		})
 
 	L1:
-
 		for len(childrenSlice) > 0 {
-			// sort skylines from left to right
+			// sort skylines from start to end
 			sort.SliceStable(skylines, func(i, j int) bool {
 				return skylines[i].start < skylines[j].start
 			})
@@ -349,7 +355,11 @@ func (n *Node) packingBestFitSkyline() {
 					skylines = append(skylines[:i+1], skylines[i+2:]...)
 				}
 			}
-
+			for i, s := range skylines {
+				if s.width == 0 {
+					skylines = append(skylines[:i], skylines[i+1:]...)
+				}
+			}
 			// sort by height, increasing order
 			sort.SliceStable(skylines, func(i, j int) bool {
 				if skylines[i].height < skylines[j].height {
@@ -363,13 +373,9 @@ func (n *Node) packingBestFitSkyline() {
 
 			// place child to the best fit skyline
 			for _, s := range skylines {
-
 				var hasFit bool
 				for j, c := range childrenSlice {
 					if s.width >= c.Interface[l][0] {
-						// if n.ID == 0 {
-						// 	fmt.Println("place", c.ID, "on", *s)
-						// }
 						c.SubPartitionOffset[l] = []int{s.start, s.start + c.Interface[l][0], s.height, s.height + c.Interface[l][1]}
 						childrenSlice = append(childrenSlice[:j], childrenSlice[j+1:]...)
 
@@ -402,25 +408,139 @@ func (n *Node) packingBestFitSkyline() {
 					}
 					if left <= right {
 						s.height = left
-
 					} else if right < left {
 						s.height = right
 					}
 
 				}
-
 				goto L1
 			}
 		}
 		for _, s := range skylines {
-			// if n.ID == 0 {
-			// 	n.Logger.Println(l, *s)
-			// }
 			if channels < s.height {
 				channels = s.height
 			}
 		}
+		// exceed channel limit, use max channel as the width of the strip and recompute
+		if channels > n.maxChannel {
+			slots = 0
+			channels = n.maxChannel
+
+			childrenSlice = []*Child{}
+			for _, c := range n.Children {
+				if c.Interface[l] != nil {
+					// reset subpartition offset
+					c.SubPartitionOffset[l] = nil
+					if c.Interface[l][0] != 0 {
+						childrenSlice = append(childrenSlice, c)
+					}
+				}
+			}
+			sort.SliceStable(childrenSlice, func(i, j int) bool {
+				if childrenSlice[i].Interface[l][1] > childrenSlice[j].Interface[l][1] {
+					return true
+				} else if childrenSlice[i].Interface[l][1] == childrenSlice[j].Interface[l][1] {
+					return childrenSlice[i].Interface[l][0] > childrenSlice[j].Interface[l][0]
+				}
+				return false
+			})
+
+			skylines := []*skyline{}
+			skylines = append(skylines, &skyline{
+				start:  0,
+				end:    channels,
+				width:  channels,
+				height: 0,
+			})
+
+		L2:
+			for _, c := range childrenSlice {
+				n.Logger.Println(l, c.ID, c.Interface[l])
+			}
+
+			for len(childrenSlice) > 0 {
+				// sort skylines from start to end
+				sort.SliceStable(skylines, func(i, j int) bool {
+					return skylines[i].start < skylines[j].start
+				})
+				// concat lines
+				for i := 0; i < len(skylines)-1; i++ {
+					if skylines[i].height == skylines[i+1].height && skylines[i].end == skylines[i+1].start {
+						skylines[i].end = skylines[i+1].end
+						skylines[i].width += skylines[i+1].width
+						skylines = append(skylines[:i+1], skylines[i+2:]...)
+					}
+				}
+				for i, s := range skylines {
+					if s.width == 0 {
+						skylines = append(skylines[:i], skylines[i+1:]...)
+					}
+				}
+
+				// sort by height, increasing order
+				sort.SliceStable(skylines, func(i, j int) bool {
+					if skylines[i].height < skylines[j].height {
+						return true
+					}
+					if skylines[i].height == skylines[j].height {
+						return skylines[i].start < skylines[j].start
+					}
+					return false
+				})
+
+				// place child to the best fit skyline
+				for _, s := range skylines {
+					var hasFit bool
+					for j, c := range childrenSlice {
+						if s.width >= c.Interface[l][1] {
+							c.SubPartitionOffset[l] = []int{s.height, s.height + c.Interface[l][0], s.start, s.start + c.Interface[l][1]}
+							childrenSlice = append(childrenSlice[:j], childrenSlice[j+1:]...)
+
+							// create a new skyline, remaining part
+							skylines = append(skylines, &skyline{
+								start:  s.start + c.Interface[l][1],
+								end:    s.end,
+								width:  s.width - c.Interface[l][1],
+								height: s.height,
+							})
+							// update the used skyline
+							s.end = s.start + c.Interface[l][1]
+							s.width = c.Interface[l][1]
+							s.height += c.Interface[l][0]
+
+							hasFit = true
+							break
+						}
+					}
+
+					if !hasFit {
+						// increase height to align with its lowest neighbor
+						var left, right = 1000, 1000
+						for _, ss := range skylines {
+							if ss.end == s.start {
+								left = ss.height
+							} else if ss.start == s.end {
+								right = ss.height
+							}
+						}
+						if left <= right {
+							s.height = left
+						} else if right < left {
+							s.height = right
+						}
+					}
+					goto L2
+				}
+			}
+			for _, s := range skylines {
+				if slots < s.height {
+					slots = s.height
+				}
+			}
+			n.Interface[l] = []int{slots, channels}
+		}
 		n.Interface[l] = []int{slots, channels}
+		n.Logger.Println("interface:", l, n.Interface[l])
 	}
 }
 
@@ -444,12 +564,13 @@ func (n *Node) allocateSubpartition() {
 		}
 
 		for _, c := range n.Children {
-			if c.SubPartitionOffset[l] != nil {
+
+			if c.Interface[l] != nil && c.SubPartitionOffset[l] != nil {
 				c.SubPartition[l] = []int{
 					n.SubPartition[l][0] + c.SubPartitionOffset[l][0],
 					n.SubPartition[l][0] + c.SubPartitionOffset[l][1],
-					n.SubPartition[l][3] - c.SubPartitionOffset[l][3],
 					n.SubPartition[l][3] - c.SubPartitionOffset[l][2],
+					n.SubPartition[l][3] - c.SubPartitionOffset[l][3],
 				}
 			}
 		}

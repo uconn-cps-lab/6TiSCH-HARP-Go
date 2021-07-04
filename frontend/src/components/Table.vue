@@ -48,8 +48,8 @@ import "echarts/lib/component/markLine";
 import "echarts/lib/component/dataZoom";
 import "echarts/lib/chart/graph"
 
-const SLOTFRAME = 65
-const CHANNELS = [1,2,3,4,5,6,7,8]
+const SLOTFRAME = 100
+const CHANNELS = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
 
 export default {
   components: {
@@ -270,6 +270,8 @@ export default {
           }
           this.$EventBus.$emit("hp_res", res.data.data)
           this.hp_res = res.data.data
+          this.drawSubPartition()
+          this.layer++
           this.drawSubPartition()
           this.layer++
         }

@@ -4,6 +4,10 @@ import (
 	"fmt"
 )
 
+const (
+	MAX_CHANNEL = 16
+)
+
 var (
 	Nodes    map[int]*Node
 	sig1     = make(chan int)
