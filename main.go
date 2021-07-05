@@ -9,11 +9,12 @@ const (
 )
 
 var (
-	Nodes    map[int]*Node
-	sig1     = make(chan int)
-	sig2     = make(chan int)
-	MaxLayer = 0
-	wsLogger chan string
+	Nodes     map[int]*Node
+	sig1      = make(chan int)
+	sig2      = make(chan int)
+	MaxLayer  = 0
+	wsLogger  chan string
+	adjMsgCnt = 0
 )
 
 func main() {

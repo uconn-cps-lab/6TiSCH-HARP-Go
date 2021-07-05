@@ -673,7 +673,7 @@ export default {
 .panel
   margin-top -5px
   .vs-input
-    width 100px
+    width 80px
     
 #grid-chart
   width 100%

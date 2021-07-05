@@ -82,7 +82,7 @@ export default {
           children:[], 
           symbolSize: 12,
           label: {
-            fontSize: 14
+            fontSize: 12
           }
         } 
       }

@@ -30,18 +30,18 @@ export default {
       this.ws = new WebSocket("ws://localhost:8888/api/ws");
       // this.ws = new WebSocket("ws://"+loc.host+"/ws")
       this.ws.onopen = () => {
-        this.log += "[*] Console connected\n";
+        this.log += "* Console connected\n";
         // console.log("ws connected", evt)
       };
       this.ws.onclose = () => {
         window.console.log("ws closed, trying to reconnect...");
-        this.log += "[!] Connection dropped, trying to reconnect...\n";
+        this.log += "! Connection dropped, trying to reconnect...\n";
         setTimeout(this.startWS, 3000);
       };
       this.ws.onmessage = (evt) => {
         this.cnt++;
-
-        this.log += "[+] " + eval(evt.data) + "\n";
+        
+        this.log += "+ " + eval(evt.data) + "\n";
         this.$nextTick(() => {
           this.$refs.logs.scrollTop = this.$refs.logs.scrollHeight;
         });
@@ -68,7 +68,6 @@ export default {
   outline: none;
   text-transform: none;
   text-decoration: none;
-  
 }
 
 textarea {
