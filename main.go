@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 )
 
 const (
@@ -31,6 +32,8 @@ func main() {
 				}
 				fmt.Println("HP finished")
 				sig2 <- 2
+				time.Sleep(3 * time.Second)
+				Nodes[2].updateInterface()
 			}
 
 		}

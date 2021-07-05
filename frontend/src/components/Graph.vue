@@ -25,7 +25,7 @@ export default {
       selectedSensor: {},
       topo: [],
       trees: {},
-      layer: 0,
+      layer: 10,
       option: {
         tooltip: {
           formatter: (item)=>{
@@ -65,7 +65,7 @@ export default {
                     align: 'left'
                 }
             },
-            initialTreeDepth: 1,
+            initialTreeDepth: 10,
             // expandAndCollapse: false,
             animationDuration: 300,
             animationDurationUpdate: 300
@@ -114,8 +114,7 @@ export default {
 
     this.$EventBus.$on("current_layer", (layer) => {
       this.layer = layer
-      this.option.series[0].initialTreeDepth = this.layer
-      window.console.log(this.layer)
+      // this.option.series[0].initialTreeDepth = this.layer
     })
   }
 }

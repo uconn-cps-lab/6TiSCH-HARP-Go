@@ -48,8 +48,8 @@ import "echarts/lib/component/markLine";
 import "echarts/lib/component/dataZoom";
 import "echarts/lib/chart/graph"
 
-const SLOTFRAME = 100
-const CHANNELS = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
+const SLOTFRAME = 40
+const CHANNELS = [1,2,3,4,5,6,7,8]
 
 export default {
   components: {
@@ -262,6 +262,7 @@ export default {
   },
   methods: {
     getHPRes() {
+      this.layer = 0
       this.$api.partition.getNodes()
       .then(res=>{
           if(res.data.flag!=1) return -1
@@ -270,6 +271,8 @@ export default {
           }
           this.$EventBus.$emit("hp_res", res.data.data)
           this.hp_res = res.data.data
+          this.drawSubPartition()
+          this.layer++
           this.drawSubPartition()
           this.layer++
           this.drawSubPartition()
@@ -296,15 +299,15 @@ export default {
                   color:colors[node.layer+1], 
                   opacity:1, 
                   borderColor:"black",
-                  borderWidth:2
+                  borderWidth:2-(node.layer*0.4)
                 },
-                label:{color:"black",fontWeight:"bold",fontSize:13, position:"inside"},
-                xAxis: node.subpartition[l][0],
-                yAxis: node.subpartition[l][2],
+                label:{color:"black",fontWeight:"bold",fontSize:12, position:"inside"},
+                xAxis: node.subpartition[l][0]+(node.layer*0.08),
+                yAxis: node.subpartition[l][2]+(node.layer*0.05),
               },
               {
-                xAxis: node.subpartition[l][1],
-                yAxis: node.subpartition[l][3],
+                xAxis: node.subpartition[l][1]-(node.layer*0.08),
+                yAxis: node.subpartition[l][3]-(node.layer*0.05),
               }
             ])
           }
@@ -317,6 +320,7 @@ export default {
   },
 
   mounted() {
+    window.table = this
     this.$EventBus.$on("postTopo", ()=>{
       window.console.log("topo posted")
       this.getHPRes()

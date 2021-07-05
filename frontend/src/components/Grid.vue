@@ -93,7 +93,8 @@ import "echarts/lib/chart/scatter";
 import "echarts/lib/chart/effectScatter";
 import "echarts/lib/component/markLine";
 import "echarts/lib/component/toolbox";
-import nodes from "./nodes101.json";
+// import nodes from "./nodes101.json";
+import nodes from "./nodes65-4hop.json";
 // import noiseList from "./noiseList.json";
 
 
@@ -107,10 +108,10 @@ export default {
   data() {
     return {
       gwPos: [],
-      sizeX: 18,
-      sizeY: 18,
-      nodesNumber: 101, // include gateway
-      maxHop: 5,
+      sizeX: 15,
+      sizeY: 15,
+      nodesNumber: 65, // include gateway
+      maxHop: 4,
       txRange: 9, // in square
       childrenCnt: {0:0},
       parent_capacity:4, // except gateway
@@ -302,7 +303,7 @@ export default {
       var xx = Math.round((sizeX - 10) * Math.random() + 5);
       var yy = Math.round((sizeY - 10) * Math.random() + 5);
       this.gwPos = [xx, yy];
-      // this.gwPos = nodes[0]
+      this.gwPos = nodes[0]
       
       // this.gwPos = [10,10]
       this.nodes = {
@@ -323,7 +324,7 @@ export default {
         this.childrenCnt[i] = 0
       }
 
-      // this.nodes = nodes
+      this.nodes = nodes
       window.console.log(nodes.length)
       for (var nn = 0; nn < Object.keys(this.nodes).length; nn++) {
         this.option.series[0].data.push(this.nodes[nn].position);
@@ -340,7 +341,6 @@ export default {
             this.$EventBus.$emit("postTopo",true)
           }
         )
-
       },100)
     },
     findParents() {
@@ -497,6 +497,19 @@ export default {
         "changedTopo",
         this.nodes
       );
+      this.$EventBus.$emit(
+        "topo",
+        {data:this.nodes}
+      );
+      setTimeout(()=>{
+        this.$EventBus.$emit("topo", { data: this.nodes, seq: this.join_seq });
+        this.$api.partition.postTopo(this.nodes).then(
+          ()=> {
+            this.$EventBus.$emit("postTopo",true)
+          }
+        )
+      },100)
+
     },
     drawLine(start, end) {
       this.option.series[0].markLine.data.push([
@@ -548,8 +561,8 @@ export default {
       }
     },
     addNoiseCircleRand() {
-      var x = Math.round(20 * Math.random());
-      var y = Math.round(20 * Math.random());
+      var x = Math.round(this.sizeX * Math.random());
+      var y = Math.round(this.sizeY * Math.random());
       // if (this.noiseID < 100) {
       //   x = noiseList[this.noiseID][0];
       //   y = noiseList[this.noiseID][1];
