@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 )
 
 const (
@@ -14,6 +13,7 @@ var (
 	sig1     = make(chan int)
 	sig2     = make(chan int)
 	MaxLayer = 0
+	wsLogger = make(chan string, 64)
 )
 
 func main() {
@@ -31,9 +31,10 @@ func main() {
 					blockers <- true
 				}
 				fmt.Println("HP finished")
+				wsLogger <- "HP finished"
 				sig2 <- 2
-				time.Sleep(3 * time.Second)
-				Nodes[2].updateInterface()
+				// time.Sleep(3 * time.Second)
+				// Nodes[52].updateInterface(4, []int{3, 1})
 			}
 
 		}
@@ -50,7 +51,7 @@ func buildTopo() {
 	}
 
 	fmt.Printf("%d-hop %d-nodes network starts\n", MaxLayer, len(Nodes))
-
+	wsLogger <- fmt.Sprintf("%d-hop %d-nodes network starts", MaxLayer, len(Nodes))
 	for l := MaxLayer; l > 0; l-- {
 		for _, nn := range Nodes {
 			if nn.Layer == l {

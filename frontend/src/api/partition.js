@@ -17,7 +17,10 @@ const sch = {
   },
   getNodes() {
     return axios.get(`/api/nodes`)
-},
+  },
+  adjustInterface(id, layer, iface) {
+    return axios.get(`/api/node/${id}?layer=${layer}&iface=${iface}`)
+  },
 }
 
 export default sch

@@ -1,34 +1,58 @@
 <template>
 
       <vs-card>
-        <div slot="header" >
-          <h4>Scheduler: HP 
-            <!-- | <span style="text-decoration:underline;cursor:pointer;" @click="handleSwitch">{{simOrReal}}</span> -->
-          <!-- <h4>Partition Scheduler -->
-            <!-- <div v-if="simOrReal=='Simulation'" class="bts"> -->
-              <!-- <vs-button color="danger" type="filled" @click="handleShuffleBt">Shuffle</vs-button> -->
-              <!-- <vs-button color="primary" type="filled"  @click="handleIntraPartitionAdjustmentBt">Intra-Partition Adjustment</vs-button> -->
-              <!-- <vs-button color="danger" type="filled"  @click="handleInterPartitionAdjustmentBt">Inter-Partition Adjustment</vs-button> -->
+        <vs-row vs-w="12" vs-type="flex" vs-align="flex-start"  vs-justify="space-between">
+          <vs-col vs-w="2">
+            <!-- <div slot="header" > -->
+              <h2>Scheduler: HP </h2>
             <!-- </div> -->
-            <div class="bts">
-              <vs-button color="danger" type="filled"  @click="handleHPBt">Hierarchical Partitioning</vs-button>
-            </div>  
-          </h4>
-          
-        </div>
-        <!-- <div class="partition-usage">
-          
-          <vs-row vs-type="flex" vs-justify="space-around" vs-w="12">
-            <vs-col vs-w="2">
-              <h3>{{this.slots.length}} links, {{nonOptimalCnt}} non-aligned</h3>
-            </vs-col>
-            <vs-col id="part" vs-w="0.5" v-for="(l,i) in links" :key="i">
-              {{l.name}}: {{l.used-l.non_optimal}}<span class="non-optimal" v-if="l.non_optimal>0">+{{l.non_optimal}}</span>
-            </vs-col>
-          </vs-row>
-          {{this.res.n1}} slots used, {{this.res.n2}} slots use multiple channels
-        </div> -->
-        <!-- <vs-divider/> -->
+          </vs-col>
+          <vs-col  vs-w="4">
+            <vs-row vs-w="12" vs-type="flex" vs-justify="flex-end">
+              <vs-col vs-offset="0" vs-w="8" >
+                <vs-row class="panel" vs-w="10" vs-type="flex" vs-align="flex-end" vs-justify="space-between">
+                  <vs-col vs-w="2" >
+                    <vs-input
+                      type="number"
+                      size="small"
+                      label="nodeID"
+                      class="inputx"
+            
+                      v-model="adjustedNode"
+                    />
+                  </vs-col>
+                  <vs-col vs-w="2">
+                    <vs-input
+                      type="number"
+                      size="small"
+                      label="layer"
+                      class="inputx"
+                
+                      v-model="adjustedLayer"
+                    />
+                  </vs-col>
+                  <vs-col vs-w="2">
+                    <vs-input
+                      type="string"
+                      size="small"
+                      label="interface"
+                      class="inputx"
+                 
+                      v-model="adjustedInterface"
+                    />
+                  </vs-col>
+                  <vs-col vs-w="2" >
+                    <vs-button color="primary" type="filled"  @click="adjustInterface">Adjust</vs-button>
+                  </vs-col>
+                </vs-row>
+              </vs-col>
+              <vs-col vs-w="4"  vs-type="flex" vs-justify="flex-end">
+                <vs-button color="danger" type="filled"  @click="handleHPBt">Hierarchical Partitioning</vs-button>
+              </vs-col>
+            </vs-row>
+          </vs-col>
+        </vs-row>
+
         <ECharts id="sch-table" autoresize :options="option"  />        
       </vs-card>
 
@@ -66,10 +90,11 @@ export default {
       topo: [],
       seq:[],
       hp_res:{},
-      bcnSubslots: {},
-      nonOptimalCnt:0,
-      nonOptimalList: [],
-      unAligned: {},
+      
+      adjustedNode: 1,
+      adjustedLayer:2,
+      adjustedInterface:"1,1",
+
       option: {
         toolbox:{
           feature:{
@@ -277,6 +302,8 @@ export default {
           this.layer++
           this.drawSubPartition()
           this.layer++
+          this.drawSubPartition()
+          this.layer++
         }
       )
     },
@@ -312,6 +339,15 @@ export default {
             ])
           }
         }
+    },
+    adjustInterface() {
+      this.$api.partition.adjustInterface(this.adjustedNode,this.adjustedLayer,this.adjustedInterface)
+      .then(()=>{
+        setTimeout(()=>{
+          this.getHPRes()
+        },1000)
+      })
+      
     },
     handleHPBt() {
       this.drawSubPartition()
@@ -351,7 +387,11 @@ export default {
   #part
     margin-top 4px
 #sch-table
-
   width 100%
-  height 400px
+  height 380px
+
+.panel
+  margin-top -5px
+  .vs-input
+    width 60px
 </style>

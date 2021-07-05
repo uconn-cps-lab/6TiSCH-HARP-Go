@@ -3,11 +3,14 @@
    <div>
     <vs-row vs-align="flex-start" vs-w="12">
       <br><br><br><br><br>
-      <vs-col style="z-index:99" vs-offset="0.45" vs-w="4.5">  
+      <vs-col style="z-index:99" vs-offset="0.45" vs-w="3.8" v-show="false">  
         <Grid/>
       </vs-col>
-      <vs-col style="z-index:99" vs-offset="0.4" vs-w="6.2">  
+      <vs-col style="z-index:99" vs-offset="0.45" vs-w="5.5">  
         <Graph/>
+      </vs-col>
+       <vs-col style="z-index:99" vs-offset="0.4" vs-w="5.2">  
+        <Console/>
       </vs-col>
     </vs-row>
       <vs-row>
@@ -21,6 +24,7 @@
 </template>
 
 <script>
+import Console from './components/Console.vue'
 import Graph from "./components/Graph.vue"
 import Grid from './components/Grid.vue'
 import Table from './components/Table.vue'
@@ -31,7 +35,8 @@ export default {
   components: {
     Graph,
     Table,
-    Grid
+    Grid,
+    Console
   }
 }
 </script>

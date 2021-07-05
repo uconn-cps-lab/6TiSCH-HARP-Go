@@ -165,7 +165,7 @@ export default {
         },
         series: [
           {
-            symbolSize: 18,
+            symbolSize: 16,
             itemStyle: {
               color: "deepskyblue",
             },
@@ -175,7 +175,7 @@ export default {
             label: {
               show: true,
               color: "black",
-              fontSize: 12,
+              fontSize: 11,
               formatter: (item) => {
                 for (var i = 0; i < Object.keys(this.nodes).length; i++) {
                   if (
@@ -677,7 +677,7 @@ export default {
     
 #grid-chart
   width 100%
-  height 400px  
+  height 320px  
 
 #bts
   font-size 0.9rem

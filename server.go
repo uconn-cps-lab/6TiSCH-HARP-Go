@@ -2,13 +2,22 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/AmyangXYZ/SweetyGo/middlewares"
 	"github.com/AmyangXYZ/sweetygo"
+	"github.com/gorilla/websocket"
 )
 
+var upgrader websocket.Upgrader
+
 func runHTTPServer() {
+	upgrader = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool { return true },
+	}
 	app := sweetygo.New()
 	// app.USE(middlewares.Logger(os.Stdout, middlewares.DefaultSkipper))
 	app.USE(middlewares.CORS(middlewares.CORSOpt{}))
@@ -17,6 +26,8 @@ func runHTTPServer() {
 	app.GET("/static/*files", static)
 	app.POST("/api/topo", postTopo)
 	app.GET("/api/nodes", getNodes)
+	app.GET("/api/node/:id", adjustInterface)
+	app.GET("/api/ws", wsLog)
 	app.Run(":8888")
 }
 
@@ -65,4 +76,33 @@ func getNodes(ctx *sweetygo.Context) error {
 		return ctx.JSON(200, 0, "no nodes", nil)
 	}
 	return ctx.JSON(200, 1, "success", Nodes)
+}
+
+func adjustInterface(ctx *sweetygo.Context) error {
+	id, _ := strconv.Atoi(ctx.Param("id"))
+	layer, _ := strconv.Atoi(ctx.Param("layer"))
+	newIF := strings.Split(ctx.Param("iface"), ",")
+
+	newIFts, _ := strconv.Atoi(newIF[0])
+	newIFch, _ := strconv.Atoi(newIF[1])
+
+	Nodes[id].updateInterface(layer, []int{newIFts, newIFch})
+	return ctx.Text(200, "123")
+}
+
+func wsLog(ctx *sweetygo.Context) error {
+	ws, err := upgrader.Upgrade(ctx.Resp, ctx.Req, nil)
+	if err != nil {
+		fmt.Println(err)
+		ctx.Resp.Write([]byte(err.Error()))
+		return err
+	}
+	defer func() {
+		ws.Close()
+		// wsLogger = make(chan string, 64)
+	}()
+
+	for {
+		ws.WriteJSON(<-wsLogger)
+	}
 }

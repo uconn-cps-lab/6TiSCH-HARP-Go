@@ -146,6 +146,7 @@ func (n *Node) subpartitionMsgHandler(msg Msg) {
 func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
 	layer := msg.Payload.([]int)[0]
 	n.Logger.Printf("received interface update @ l%d from %d: %v", layer, msg.Src, msg.Payload)
+	wsLogger <- fmt.Sprintf("#%d received interface update @ l%d from %d: %v", n.ID, layer, msg.Src, msg.Payload)
 	n.Children[msg.Src].Interface[layer] = msg.Payload.([]int)[1:]
 
 	n.compositeInterface(layer)
@@ -153,7 +154,8 @@ func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
 
 	if n.Interface[layer][0] > n.SubPartition[layer][1]-n.SubPartition[layer][0] ||
 		n.Interface[layer][1] > n.SubPartition[layer][3]-n.SubPartition[layer][2] {
-		// n.Logger.Printf("subpartition @ l%d overflow, send interface update to %d\n", layer, n.Parent)
+		n.Logger.Printf("subpartition @ l%d overflow, send interface update to %d\n", layer, n.Parent)
+		wsLogger <- fmt.Sprintf("#%d subpartition @ l%d overflow, send interface update to %d", n.ID, layer, n.Parent)
 		n.sendTo(n.Parent, MSG_IF_UPDATE, append([]int{layer}, n.Interface[layer]...))
 
 	} else {
@@ -164,6 +166,7 @@ func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
 func (n *Node) subpartitionUpdateMsgHandler(msg Msg) {
 	var layer = msg.Payload.([]int)[0]
 	n.Logger.Printf("received subpartition update @ l%d from %d: %v", layer, msg.Src, msg.Payload)
+	wsLogger <- fmt.Sprintf("#%d received subpartition update @ l%d from %d: %v", n.ID, layer, msg.Src, msg.Payload)
 	n.SubPartition[layer] = msg.Payload.([]int)[1:]
 
 	n.adjustSubpartition(layer)
@@ -623,11 +626,11 @@ func (n *Node) allocateSubpartition() {
 }
 
 // update interface, simulate dynamic network
-func (n *Node) updateInterface() {
-	var layer = 4
+func (n *Node) updateInterface(layer int, newIF []int) {
 	oldIF := n.Interface[layer]
-	n.Interface[layer] = []int{3, 1}
+	n.Interface[layer] = newIF
 	n.Logger.Printf("interface @ l%d changed from %v to %v, send interface update to %d\n", layer, oldIF, n.Interface[layer], n.Parent)
+	wsLogger <- fmt.Sprintf("#%d interface @ l%d changed from %v to %v, send interface update to %d", n.ID, layer, oldIF, n.Interface[layer], n.Parent)
 	n.sendTo(n.Parent, MSG_IF_UPDATE, append([]int{layer}, n.Interface[layer]...))
 }
 
