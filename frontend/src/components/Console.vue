@@ -30,7 +30,7 @@ export default {
       this.ws = new WebSocket("ws://localhost:8888/api/ws");
       // this.ws = new WebSocket("ws://"+loc.host+"/ws")
       this.ws.onopen = () => {
-        this.log += "[+] Console connected\n";
+        this.log += "[*] Console connected\n";
         // console.log("ws connected", evt)
       };
       this.ws.onclose = () => {
@@ -41,7 +41,7 @@ export default {
       this.ws.onmessage = (evt) => {
         this.cnt++;
 
-        this.log += "[*] " + eval(evt.data) + "\n";
+        this.log += "[+] " + eval(evt.data) + "\n";
         this.$nextTick(() => {
           this.$refs.logs.scrollTop = this.$refs.logs.scrollHeight;
         });
@@ -56,22 +56,19 @@ export default {
 
 <style scoped>
 #console {
-  height: 445px;
+  height: 435px;
 }
 #logs {
   color: "blue";
-  margin-top: 3px;
   width: 100%;
-  height: 380px;
-  font-size: 0.75rem;
-  line-height: 1.3;
-  border-radius: 6px;
-  padding: 6px;
-  box-sizing: border-box;
+  height: 370px;
+  font-size: 0.70rem;
+  line-height: 1.2;
   resize: none;
   outline: none;
   text-transform: none;
   text-decoration: none;
+  
 }
 
 textarea {

@@ -91,6 +91,8 @@ func adjustInterface(ctx *sweetygo.Context) error {
 }
 
 func wsLog(ctx *sweetygo.Context) error {
+	wsLogger = make(chan string, 512)
+
 	ws, err := upgrader.Upgrade(ctx.Resp, ctx.Req, nil)
 	if err != nil {
 		fmt.Println(err)

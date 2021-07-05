@@ -13,7 +13,7 @@ var (
 	sig1     = make(chan int)
 	sig2     = make(chan int)
 	MaxLayer = 0
-	wsLogger = make(chan string, 64)
+	wsLogger chan string
 )
 
 func main() {
@@ -21,6 +21,7 @@ func main() {
 		for {
 			signal := <-sig1
 			if signal == 1 {
+
 				buildTopo()
 				blockers := make(chan bool, len(Nodes))
 				for _, n := range Nodes {

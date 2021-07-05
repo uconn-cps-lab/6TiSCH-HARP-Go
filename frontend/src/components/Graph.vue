@@ -45,9 +45,9 @@ export default {
               {name:"0",children:[]}
             ],
             top: '5%',
-            left: '3%',
+            left: '0%',
             bottom: '5%',
-            right: '3%',
+            right: '0%',
             roam: true,
             symbolSize: 8,
             orient: 'vertical',
@@ -55,7 +55,7 @@ export default {
               position: 'top',
               verticalAlign: 'middle',
               align: 'right',
-              fontSize: 13
+              fontSize: 12
             },
 
             leaves: {

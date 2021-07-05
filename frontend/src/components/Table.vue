@@ -7,10 +7,10 @@
               <h2>Scheduler: HP </h2>
             <!-- </div> -->
           </vs-col>
-          <vs-col  vs-w="4">
+          <vs-col  vs-w="5">
             <vs-row vs-w="12" vs-type="flex" vs-justify="flex-end">
-              <vs-col vs-offset="0" vs-w="8" >
-                <vs-row class="panel" vs-w="10" vs-type="flex" vs-align="flex-end" vs-justify="space-between">
+              <vs-col vs-offset="0" vs-w="9">
+                <vs-row class="panel" vs-w="10" vs-type="flex" vs-align="flex-end" vs-justify="space-around">
                   <vs-col vs-w="2" >
                     <vs-input
                       type="number"
@@ -46,8 +46,8 @@
                   </vs-col>
                 </vs-row>
               </vs-col>
-              <vs-col vs-w="4"  vs-type="flex" vs-justify="flex-end">
-                <vs-button color="danger" type="filled"  @click="handleHPBt">Hierarchical Partitioning</vs-button>
+              <vs-col vs-w="2"  vs-type="flex" vs-justify="flex-end">
+                <vs-button color="danger" type="filled"  @click="handleHPBt">HP</vs-button>
               </vs-col>
             </vs-row>
           </vs-col>
@@ -72,8 +72,8 @@ import "echarts/lib/component/markLine";
 import "echarts/lib/component/dataZoom";
 import "echarts/lib/chart/graph"
 
-const SLOTFRAME = 40
-const CHANNELS = [1,2,3,4,5,6,7,8]
+const SLOTFRAME = 100
+const CHANNELS = [1,2,3,4,5,6,7,8,9,10]
 
 export default {
   components: {
@@ -91,14 +91,14 @@ export default {
       seq:[],
       hp_res:{},
       
-      adjustedNode: 1,
-      adjustedLayer:2,
-      adjustedInterface:"1,1",
+      adjustedNode: 44,
+      adjustedLayer:3,
+      adjustedInterface:"2,1",
 
       option: {
         toolbox:{
           feature:{
-            saveAsImage:{}
+            // saveAsImage:{}
           }
         },
         tooltip: {
@@ -186,7 +186,7 @@ export default {
           {
             type: "inside",
             start: 0,
-            end: 100  ,
+            end: 35  ,
           },
         ],
         visualMap: {
@@ -393,5 +393,5 @@ export default {
 .panel
   margin-top -5px
   .vs-input
-    width 60px
+    width 55px
 </style>

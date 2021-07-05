@@ -145,17 +145,18 @@ func (n *Node) subpartitionMsgHandler(msg Msg) {
 
 func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
 	layer := msg.Payload.([]int)[0]
-	n.Logger.Printf("received interface update @ l%d from %d: %v", layer, msg.Src, msg.Payload)
-	wsLogger <- fmt.Sprintf("#%d received interface update @ l%d from %d: %v", n.ID, layer, msg.Src, msg.Payload)
+	n.Logger.Printf("received SP_ADJ_REQ @ L%d from #%d", layer, msg.Src)
+	wsLogger <- fmt.Sprintf("#%d received SP_ADJ_REQ @ L%d from #%d", n.ID, layer, msg.Src)
 	n.Children[msg.Src].Interface[layer] = msg.Payload.([]int)[1:]
 
 	n.compositeInterface(layer)
-	// n.Logger.Printf("new interface composition @ l%d: %v\n", layer, n.Interface[layer])
+	n.Logger.Printf("recomputes IF composition and SPs arrangement @ L%d\n", layer)
+	wsLogger <- fmt.Sprintf("#%d recomputes IF composition and SPs arrangement @ L%d", n.ID, layer)
 
 	if n.Interface[layer][0] > n.SubPartition[layer][1]-n.SubPartition[layer][0] ||
 		n.Interface[layer][1] > n.SubPartition[layer][3]-n.SubPartition[layer][2] {
-		n.Logger.Printf("subpartition @ l%d overflow, send interface update to %d\n", layer, n.Parent)
-		wsLogger <- fmt.Sprintf("#%d subpartition @ l%d overflow, send interface update to %d", n.ID, layer, n.Parent)
+		n.Logger.Printf("SP @ L%d cannot satisfy new IF composition, send SP_ADJ_REQ to #%d\n", layer, n.Parent)
+		wsLogger <- fmt.Sprintf("#%d SP @ L%d cannot satisfy new IF composition, send SP_ADJ_REQ to #%d", n.ID, layer, n.Parent)
 		n.sendTo(n.Parent, MSG_IF_UPDATE, append([]int{layer}, n.Interface[layer]...))
 
 	} else {
@@ -165,8 +166,8 @@ func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
 
 func (n *Node) subpartitionUpdateMsgHandler(msg Msg) {
 	var layer = msg.Payload.([]int)[0]
-	n.Logger.Printf("received subpartition update @ l%d from %d: %v", layer, msg.Src, msg.Payload)
-	wsLogger <- fmt.Sprintf("#%d received subpartition update @ l%d from %d: %v", n.ID, layer, msg.Src, msg.Payload)
+	n.Logger.Printf("received SP_UPDATE @ L%d from #%d", layer, msg.Src)
+	wsLogger <- fmt.Sprintf("#%d received SP_UPDATE @ L%d from #%d", n.ID, layer, msg.Src)
 	n.SubPartition[layer] = msg.Payload.([]int)[1:]
 
 	n.adjustSubpartition(layer)
@@ -591,13 +592,13 @@ L1:
 // map logical sub-partition offset to physcial sub-partition locations
 func (n *Node) allocateSubpartition() {
 	if n.ID == 0 {
-		var redundant = 5
+		var redundant = 2
 		var slotIdx = 0
 		for l := MaxLayer; l > 0; l-- {
 			if n.Interface[l] == nil {
 				continue
 			}
-			n.SubPartition[l] = []int{slotIdx, slotIdx + redundant + n.Interface[l][0], 1, 9}
+			n.SubPartition[l] = []int{slotIdx, slotIdx + redundant + n.Interface[l][0], 1, 11}
 			slotIdx += redundant + n.Interface[l][0]
 		}
 	}
@@ -627,11 +628,14 @@ func (n *Node) allocateSubpartition() {
 
 // update interface, simulate dynamic network
 func (n *Node) updateInterface(layer int, newIF []int) {
-	oldIF := n.Interface[layer]
 	n.Interface[layer] = newIF
-	n.Logger.Printf("interface @ l%d changed from %v to %v, send interface update to %d\n", layer, oldIF, n.Interface[layer], n.Parent)
-	wsLogger <- fmt.Sprintf("#%d interface @ l%d changed from %v to %v, send interface update to %d", n.ID, layer, oldIF, n.Interface[layer], n.Parent)
-	n.sendTo(n.Parent, MSG_IF_UPDATE, append([]int{layer}, n.Interface[layer]...))
+	if n.Interface[layer][0] > n.SubPartition[layer][1]-n.SubPartition[layer][0] ||
+		n.Interface[layer][1] > n.SubPartition[layer][3]-n.SubPartition[layer][2] {
+		n.Logger.Printf("IF @ L%d changed and exceeded allocated SP, send SP_ADJ_REQ to #%d\n", layer, n.Parent)
+		wsLogger <- ""
+		wsLogger <- fmt.Sprintf("#%d IF @ L%d changed and exceeded allocated SP, send SP_ADJ_REQ to #%d", n.ID, layer, n.Parent)
+		n.sendTo(n.Parent, MSG_IF_UPDATE, append([]int{layer}, n.Interface[layer]...))
+	}
 }
 
 func (n *Node) adjustSubpartition(layer int) {
@@ -648,7 +652,7 @@ func (n *Node) adjustSubpartition(layer int) {
 				c.SubPartition[layer][2] != newSubpartition[2] ||
 				c.SubPartition[layer][3] != newSubpartition[3] {
 				c.SubPartition[layer] = newSubpartition
-				// n.Logger.Printf("send new subpartition @ l%d to %d: %v\n", layer, c.ID, c.SubPartition[layer])
+				// n.Logger.Printf("send new subpartition @ L%d to %d: %v\n", layer, c.ID, c.SubPartition[layer])
 				n.sendTo(c.ID, MSG_SP_UPDATE, append([]int{layer}, c.SubPartition[layer]...))
 			}
 		}

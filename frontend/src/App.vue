@@ -3,19 +3,20 @@
    <div>
     <vs-row vs-align="flex-start" vs-w="12">
       <br><br><br><br><br>
-      <vs-col style="z-index:99" vs-offset="0.45" vs-w="3.8" v-show="false">  
+      <vs-col style="z-index:99" vs-offset="0.25" vs-w="4.3" v-show="true">  
         <Grid/>
       </vs-col>
-      <vs-col style="z-index:99" vs-offset="0.45" vs-w="5.5">  
+      <vs-col style="z-index:99" vs-offset="0.2" vs-w="7">  
         <Graph/>
       </vs-col>
-       <vs-col style="z-index:99" vs-offset="0.4" vs-w="5.2">  
-        <Console/>
-      </vs-col>
+       
     </vs-row>
       <vs-row>
-        <vs-col style="z-index:99" vs-offset="0.45" vs-w="11.1">  
+        <vs-col style="z-index:99" vs-offset="0.25" vs-w="7">  
           <Table/>
+        </vs-col>
+        <vs-col style="z-index:99" vs-offset="0.2" vs-w="4.3">  
+          <Console/>
         </vs-col>
       </vs-row>
     </div>
@@ -59,7 +60,7 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
-  margin-top: 40px;
+  margin-top: 20px;
   /* height: 100%; */
 }
 

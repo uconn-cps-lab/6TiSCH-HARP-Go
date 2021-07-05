@@ -108,8 +108,8 @@ export default {
   data() {
     return {
       gwPos: [],
-      sizeX: 15,
-      sizeY: 15,
+      sizeX: 16,
+      sizeY: 16,
       nodesNumber: 65, // include gateway
       maxHop: 4,
       txRange: 9, // in square
@@ -677,7 +677,7 @@ export default {
     
 #grid-chart
   width 100%
-  height 320px  
+  height 325px  
 
 #bts
   font-size 0.9rem
