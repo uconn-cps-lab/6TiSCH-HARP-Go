@@ -47,7 +47,9 @@ export default {
             this.$refs.logs.scrollTop = this.$refs.logs.scrollHeight;
           });
         } else if(entry.type == 0x22) {
-          this.$EventBus.$emit("affectedNodes", entry.data)
+          this.$EventBus.$emit("affectedNodes", entry.data[0])
+        } else if(entry.type == 0x23) {
+          this.$EventBus.$emit("flow", entry.data)
         }
       };
     },

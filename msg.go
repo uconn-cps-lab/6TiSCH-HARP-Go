@@ -7,6 +7,7 @@ const (
 	MSG_SP_UPDATE         = 0x14
 	WS_LOG_MSG            = 0x21
 	WS_LOG_AFFECTED_NODES = 0x22
+	WS_LOG_FLOW           = 0x23
 )
 
 type Msg struct {

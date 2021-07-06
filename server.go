@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/AmyangXYZ/SweetyGo/middlewares"
 	"github.com/AmyangXYZ/sweetygo"
@@ -91,19 +90,6 @@ func adjustInterface(ctx *sweetygo.Context) error {
 			newIFch, _ := strconv.Atoi(newIF[1])
 
 			Nodes[id].updateInterface(layer, []int{newIFts, newIFch})
-			go func() {
-				time.Sleep(1500 * time.Millisecond)
-				tmp := []int{}
-				for n := range affectedNodes {
-					tmp = append(tmp, n)
-				}
-				fmt.Println(tmp)
-				wsLogger <- wsLog{
-					WS_LOG_AFFECTED_NODES,
-					"",
-					tmp,
-				}
-			}()
 			return ctx.Text(200, "123")
 		}
 	}

@@ -108,14 +108,7 @@ export default {
       }
       this.option.series[0].data = [this.trees[0]]
     },
-    colorAffectedNodes() {
-      for(var i=0;i<Object.keys(this.trees).length;i++) {
-        this.trees[i].itemStyle.color = "white"
-      }
-      for(var j=0;j<this.affectedNodes.length;j++) {
-        this.trees[ this.affectedNodes[j] ].itemStyle.color = "red"
-      }
-    }
+
   },
   mounted() {
     this.$EventBus.$on("topo", (topo) => {
@@ -132,9 +125,15 @@ export default {
       // this.option.series[0].initialTreeDepth = this.layer
     })
 
-    this.$EventBus.$on("affectedNodes", (nodes)=>{
-      this.affectedNodes = nodes
-      this.colorAffectedNodes()
+    this.$EventBus.$on("adjustment", ()=>{
+      for(var i=0;i<Object.keys(this.trees).length;i++) {
+        this.trees[i].itemStyle.color = "white"
+      }
+      this.affectedNodes = []
+    })
+
+    this.$EventBus.$on("affectedNodes", (node)=>{
+      this.trees[ node ].itemStyle.color = "red"
     })
   }
 }

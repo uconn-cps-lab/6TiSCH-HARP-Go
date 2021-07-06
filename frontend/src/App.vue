@@ -8,17 +8,23 @@
       </vs-col>
       <vs-col style="z-index:99" vs-offset="0.2" vs-w="7">  
         <Graph/>
-      </vs-col>
-       
+      </vs-col>  
     </vs-row>
-      <vs-row>
-        <vs-col style="z-index:99" vs-offset="0.25" vs-w="7">  
-          <Table/>
-        </vs-col>
-        <vs-col style="z-index:99" vs-offset="0.2" vs-w="4.3">  
-          <Console/>
-        </vs-col>
-      </vs-row>
+    
+    <vs-row>
+      <vs-col style="z-index:99" vs-offset="0.25" vs-w="7">  
+        <Table/>
+      </vs-col>
+      <vs-col style="z-index:99" vs-offset="0.2" vs-w="4.3">  
+        <Console/>
+      </vs-col>
+    </vs-row>
+    
+    <vs-row>
+      <vs-col style="z-index:99" vs-offset="0.25" vs-w="11.5">  
+        <Flow/>
+      </vs-col>
+    </vs-row>
     </div>
   </div>
   
@@ -26,6 +32,7 @@
 
 <script>
 import Console from './components/Console.vue'
+import Flow from './components/Flow.vue'
 import Graph from "./components/Graph.vue"
 import Grid from './components/Grid.vue'
 import Table from './components/Table.vue'
@@ -37,7 +44,8 @@ export default {
     Graph,
     Table,
     Grid,
-    Console
+    Console,
+    Flow
   }
 }
 </script>

@@ -91,7 +91,7 @@ export default {
       seq:[],
       hp_res:{},
       
-      adjustedNode: 3,
+      adjustedNode: 61,
       adjustedLayer:2,
       adjustedInterface:"5,1",
 
@@ -356,6 +356,7 @@ export default {
         }
     },
     adjustInterface() {
+      this.$EventBus.$emit("adjustment",true)
       this.$api.partition.adjustInterface(this.adjustedNode,this.adjustedLayer,this.adjustedInterface)
       .then(()=>{
         setTimeout(()=>{

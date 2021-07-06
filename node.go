@@ -124,6 +124,37 @@ func (n *Node) listen() {
 func (n *Node) sendTo(dst, msgType int, payload interface{}) {
 	msg := Msg{n.ID, dst, msgType, payload}
 	Nodes[dst].RXCh <- msg
+	if msgType == MSG_SP_UPDATE || msgType == MSG_IF_UPDATE {
+		if _, ok := affectedNodes[n.ID]; !ok {
+			// hasn't been upload
+			if !affectedNodes[n.ID] {
+				affectedNodes[n.ID] = true
+				wsLogger <- wsLog{
+					WS_LOG_AFFECTED_NODES,
+					"",
+					[]int{n.ID}, // type, src, dst
+				}
+			}
+		}
+
+		if _, ok := affectedNodes[dst]; !ok {
+			// hasn't been upload
+			if !affectedNodes[dst] {
+				affectedNodes[dst] = true
+				wsLogger <- wsLog{
+					WS_LOG_AFFECTED_NODES,
+					"",
+					[]int{dst}, // type, src, dst
+				}
+			}
+		}
+
+		wsLogger <- wsLog{
+			WS_LOG_FLOW,
+			"",
+			[]int{msgType, n.ID, dst}, // type, src, dst
+		}
+	}
 	// n.Logger.Printf("sent %d msg to %d, payload: %v\n", msgType, dst, payload)
 }
 
@@ -144,10 +175,6 @@ func (n *Node) subpartitionMsgHandler(msg Msg) {
 }
 
 func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
-	if _, ok := affectedNodes[n.ID]; !ok {
-		affectedNodes[n.ID] = true
-	}
-
 	layer := msg.Payload.([]int)[0]
 	// n.Logger.Printf("received SP_ADJ_REQ @ L%d from #%d", layer, msg.Src)
 	// wsLogger <- fmt.Sprintf("#%d received SP_ADJ_REQ @ L%d from #%d", n.ID, layer, msg.Src)
@@ -173,9 +200,6 @@ func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
 }
 
 func (n *Node) subpartitionUpdateMsgHandler(msg Msg) {
-	if _, ok := affectedNodes[n.ID]; !ok {
-		affectedNodes[n.ID] = true
-	}
 	var layer = msg.Payload.([]int)[0]
 	// n.Logger.Printf("received SP_UPDATE @ L%d from #%d", layer, msg.Src)
 	// wsLogger <- fmt.Sprintf("#%d received SP_UPDATE @ L%d from #%d", n.ID, layer, msg.Src)
