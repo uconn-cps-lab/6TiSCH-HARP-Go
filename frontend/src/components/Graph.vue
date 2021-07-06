@@ -134,10 +134,9 @@ export default {
       this.affectedNodes = []
     })
 
-    this.$EventBus.$on("affectedNodes", (node)=>{
-      this.trees[ node ].itemStyle.color = "red"
-      // this.trees[ node ].lineStyle.width = 4
-      // this.trees[ node ].lineStyle.color = "red"
+    this.$EventBus.$on("affectedNodes", (nodes)=>{
+      for(var i=0;i<nodes.length;i++)
+        this.trees[ nodes[i] ].itemStyle.color = "red"
     })
   }
 }

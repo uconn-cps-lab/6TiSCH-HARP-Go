@@ -126,27 +126,10 @@ func (n *Node) sendTo(dst, msgType int, payload interface{}) {
 	Nodes[dst].RXCh <- msg
 	if msgType == MSG_SP_UPDATE || msgType == MSG_IF_UPDATE {
 		if _, ok := affectedNodes[n.ID]; !ok {
-			// hasn't been upload
-			if !affectedNodes[n.ID] {
-				affectedNodes[n.ID] = true
-				wsLogger <- wsLog{
-					WS_LOG_AFFECTED_NODES,
-					"",
-					[]int{n.ID}, // type, src, dst
-				}
-			}
+			affectedNodes[n.ID] = true
 		}
-
 		if _, ok := affectedNodes[dst]; !ok {
-			// hasn't been upload
-			if !affectedNodes[dst] {
-				affectedNodes[dst] = true
-				wsLogger <- wsLog{
-					WS_LOG_AFFECTED_NODES,
-					"",
-					[]int{dst}, // type, src, dst
-				}
-			}
+			affectedNodes[dst] = true
 		}
 
 		wsLogger <- wsLog{
