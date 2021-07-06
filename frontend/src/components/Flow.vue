@@ -53,7 +53,8 @@ export default {
             color: "black",
             fontSize: 13,
             formatter: (item) => {
-              return "#"+this.affectedNodes[item.value[0]-1].toString()
+              if(this.affectedNodes[item.value[0]]!=null)
+                return "#"+this.affectedNodes[item.value[0]-1]
             },
           },
           symbolSize: 10,
@@ -95,8 +96,11 @@ export default {
   },
   mounted() {
     this.$EventBus.$on("adjustment", ()=>{
+      window.console.log("enter adjustmetn phase")
       this.affectedNodes = []
+      this.option.series[0].markLine.data = []
       this.cnt = 0
+      this.draw()
     })
 
     this.$EventBus.$on("affectedNodes", (node)=>{
@@ -110,11 +114,13 @@ export default {
       var type = flow[0]
       var src = flow[1]
       var dst = flow[2]
+      var layer = flow[3]
       if(type==0x12) {
         type = "SP_ADJ_REQ"
       } else if(type==0x14) {
-        type = "SP UPDATE"
+        type = "SP_UPDATE"
       }
+      type += " @ L"+layer
       this.option.series[0].markLine.data.push([
         {
           name: type,

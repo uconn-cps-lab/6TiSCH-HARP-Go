@@ -152,7 +152,7 @@ func (n *Node) sendTo(dst, msgType int, payload interface{}) {
 		wsLogger <- wsLog{
 			WS_LOG_FLOW,
 			"",
-			[]int{msgType, n.ID, dst}, // type, src, dst
+			[]int{msgType, n.ID, dst, payload.([]int)[0]}, // type, src, dst, layer
 		}
 	}
 	// n.Logger.Printf("sent %d msg to %d, payload: %v\n", msgType, dst, payload)
@@ -705,10 +705,10 @@ func (n *Node) adjustSubpartition(layer int) {
 				mutex.Lock()
 				adjMsgCnt++
 				mutex.Unlock()
-				n.Logger.Printf("send new SP @ L%d to #%d \n", layer, c.ID)
+				n.Logger.Printf("send SP_UPDATE @ L%d to #%d \n", layer, c.ID)
 				wsLogger <- wsLog{
 					WS_LOG_MSG,
-					fmt.Sprintf("%d) #%d send new SP @ L%d to #%d", adjMsgCnt, n.ID, layer, c.ID),
+					fmt.Sprintf("%d) #%d send SP_UPDATE @ L%d to #%d", adjMsgCnt, n.ID, layer, c.ID),
 					nil,
 				}
 				n.sendTo(c.ID, MSG_SP_UPDATE, append([]int{layer}, c.SubPartition[layer]...))

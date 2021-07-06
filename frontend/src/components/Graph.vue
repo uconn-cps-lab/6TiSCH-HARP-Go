@@ -91,7 +91,8 @@ export default {
           label: {
             fontSize: 12
           },
-          itemStyle:{color:"white"}
+          itemStyle:{color:"white"},
+          lineStyle:{width:8}
         } 
       }
       for(var i=1;i<Object.keys(this.topo).length;i++) {
@@ -102,7 +103,7 @@ export default {
           this.trees[node] = {name: node, children:[], itemStyle:{color:"white"}}
 
         if(this.trees[parent]==null)
-          this.trees[parent] = { name: parent, children: [ this.trees[node] ], itemStyle:{color:"white"} }
+          this.trees[parent] = { name: parent, children: [ this.trees[node] ], itemStyle:{color:"white"}}
         else
           this.trees[parent].children.push(this.trees[node])
       }
@@ -128,12 +129,15 @@ export default {
     this.$EventBus.$on("adjustment", ()=>{
       for(var i=0;i<Object.keys(this.trees).length;i++) {
         this.trees[i].itemStyle.color = "white"
+        this.trees[i].lineStyle.width = 8
       }
       this.affectedNodes = []
     })
 
     this.$EventBus.$on("affectedNodes", (node)=>{
       this.trees[ node ].itemStyle.color = "red"
+      this.trees[ node ].lineStyle.width = 4
+      this.trees[ node ].lineStyle.color = "red"
     })
   }
 }
