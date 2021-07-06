@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/AmyangXYZ/SweetyGo/middlewares"
 	"github.com/AmyangXYZ/sweetygo"
@@ -27,7 +29,7 @@ func runHTTPServer() {
 	app.POST("/api/topo", postTopo)
 	app.GET("/api/nodes", getNodes)
 	app.GET("/api/node/:id", adjustInterface)
-	app.GET("/api/ws", wsLog)
+	app.GET("/api/ws", ws)
 	app.Run(":8888")
 }
 
@@ -79,19 +81,42 @@ func getNodes(ctx *sweetygo.Context) error {
 }
 
 func adjustInterface(ctx *sweetygo.Context) error {
+	affectedNodes = make(map[int]bool)
 	id, _ := strconv.Atoi(ctx.Param("id"))
 	layer, _ := strconv.Atoi(ctx.Param("layer"))
 	newIF := strings.Split(ctx.Param("iface"), ",")
+	if Nodes[id] != nil {
+		if Nodes[id].Interface[layer] != nil {
+			newIFts, _ := strconv.Atoi(newIF[0])
+			newIFch, _ := strconv.Atoi(newIF[1])
 
-	newIFts, _ := strconv.Atoi(newIF[0])
-	newIFch, _ := strconv.Atoi(newIF[1])
-
-	Nodes[id].updateInterface(layer, []int{newIFts, newIFch})
-	return ctx.Text(200, "123")
+			Nodes[id].updateInterface(layer, []int{newIFts, newIFch})
+			go func() {
+				time.Sleep(1500 * time.Millisecond)
+				tmp := []int{}
+				for n := range affectedNodes {
+					tmp = append(tmp, n)
+				}
+				fmt.Println(tmp)
+				wsLogger <- wsLog{
+					WS_LOG_AFFECTED_NODES,
+					"",
+					tmp,
+				}
+			}()
+			return ctx.Text(200, "123")
+		}
+	}
+	wsLogger <- wsLog{
+		WS_LOG_MSG,
+		"invalid node or interface",
+		nil,
+	}
+	return errors.New("invalid node or interface")
 }
 
-func wsLog(ctx *sweetygo.Context) error {
-	wsLogger = make(chan string, 512)
+func ws(ctx *sweetygo.Context) error {
+	wsLogger = make(chan wsLog, 512)
 
 	ws, err := upgrader.Upgrade(ctx.Resp, ctx.Req, nil)
 	if err != nil {

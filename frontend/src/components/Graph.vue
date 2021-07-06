@@ -24,6 +24,7 @@ export default {
       selectedRange: "day",
       selectedSensor: {},
       topo: [],
+      affectedNodes:[],
       trees: {},
       layer: 10,
       option: {
@@ -49,20 +50,26 @@ export default {
             bottom: '5%',
             right: '0%',
             roam: true,
-            symbolSize: 8,
+            symbol:"circle",
+            symbolSize: 11,
             orient: 'vertical',
+            itemStyle:{
+              color:"white",
+              borderColor: "red",
+              shadowColor:"red"
+            },
             label: {
               position: 'top',
               verticalAlign: 'middle',
               align: 'right',
-              fontSize: 12
+              fontSize: 13
             },
 
             leaves: {
                 label: {
                     position: 'top',
                     verticalAlign: 'middle',
-                    align: 'left'
+                    align: 'right'
                 }
             },
             initialTreeDepth: 10,
@@ -83,7 +90,8 @@ export default {
           symbolSize: 12,
           label: {
             fontSize: 12
-          }
+          },
+          itemStyle:{color:"white"}
         } 
       }
       for(var i=1;i<Object.keys(this.topo).length;i++) {
@@ -91,16 +99,23 @@ export default {
         var parent = this.topo[node].parent
 
         if(this.trees[node]==null) 
-          this.trees[node] = {name: node, children:[]}
+          this.trees[node] = {name: node, children:[], itemStyle:{color:"white"}}
 
         if(this.trees[parent]==null)
-          this.trees[parent] = { name: parent, children: [ this.trees[node] ] }
+          this.trees[parent] = { name: parent, children: [ this.trees[node] ], itemStyle:{color:"white"} }
         else
           this.trees[parent].children.push(this.trees[node])
       }
       this.option.series[0].data = [this.trees[0]]
     },
-
+    colorAffectedNodes() {
+      for(var i=0;i<Object.keys(this.trees).length;i++) {
+        this.trees[i].itemStyle.color = "white"
+      }
+      for(var j=0;j<this.affectedNodes.length;j++) {
+        this.trees[ this.affectedNodes[j] ].itemStyle.color = "red"
+      }
+    }
   },
   mounted() {
     this.$EventBus.$on("topo", (topo) => {
@@ -115,6 +130,11 @@ export default {
     this.$EventBus.$on("current_layer", (layer) => {
       this.layer = layer
       // this.option.series[0].initialTreeDepth = this.layer
+    })
+
+    this.$EventBus.$on("affectedNodes", (nodes)=>{
+      this.affectedNodes = nodes
+      this.colorAffectedNodes()
     })
   }
 }

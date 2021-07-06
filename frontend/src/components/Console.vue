@@ -40,11 +40,15 @@ export default {
       };
       this.ws.onmessage = (evt) => {
         this.cnt++;
-        
-        this.log += "+ " + eval(evt.data) + "\n";
-        this.$nextTick(() => {
-          this.$refs.logs.scrollTop = this.$refs.logs.scrollHeight;
-        });
+        var entry = JSON.parse(evt.data)
+        if(entry.type == 0x21) {
+          this.log += "+ " + entry.msg + "\n";
+          this.$nextTick(() => {
+            this.$refs.logs.scrollTop = this.$refs.logs.scrollHeight;
+          });
+        } else if(entry.type == 0x22) {
+          this.$EventBus.$emit("affectedNodes", entry.data)
+        }
       };
     },
   },

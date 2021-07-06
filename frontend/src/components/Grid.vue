@@ -94,7 +94,7 @@ import "echarts/lib/chart/effectScatter";
 import "echarts/lib/component/markLine";
 import "echarts/lib/component/toolbox";
 // import nodes from "./nodes101.json";
-import nodes from "./nodes65-4hop.json";
+import nodes from "./nodes65-4hop2.json";
 // import noiseList from "./noiseList.json";
 
 
@@ -303,7 +303,6 @@ export default {
       var xx = Math.round((sizeX - 10) * Math.random() + 5);
       var yy = Math.round((sizeY - 10) * Math.random() + 5);
       this.gwPos = [xx, yy];
-      this.gwPos = nodes[0]
       
       // this.gwPos = [10,10]
       this.nodes = {
@@ -324,6 +323,7 @@ export default {
         this.childrenCnt[i] = 0
       }
 
+      this.gwPos = nodes[0]
       this.nodes = nodes
       window.console.log(nodes.length)
       for (var nn = 0; nn < Object.keys(this.nodes).length; nn++) {

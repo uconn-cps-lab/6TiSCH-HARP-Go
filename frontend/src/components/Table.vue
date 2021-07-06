@@ -91,9 +91,9 @@ export default {
       seq:[],
       hp_res:{},
       
-      adjustedNode: 44,
-      adjustedLayer:3,
-      adjustedInterface:"2,1",
+      adjustedNode: 3,
+      adjustedLayer:2,
+      adjustedInterface:"5,1",
 
       option: {
         toolbox:{
@@ -315,10 +315,10 @@ export default {
           this.layer++
           this.drawSubPartition()
           this.layer++
-          this.drawSubPartition()
-          this.layer++
-          this.drawSubPartition()
-          this.layer++
+          // this.drawSubPartition()
+          // this.layer++
+          // this.drawSubPartition()
+          // this.layer++
         }
       )
     },

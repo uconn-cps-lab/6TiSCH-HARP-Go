@@ -144,6 +144,10 @@ func (n *Node) subpartitionMsgHandler(msg Msg) {
 }
 
 func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
+	if _, ok := affectedNodes[n.ID]; !ok {
+		affectedNodes[n.ID] = true
+	}
+
 	layer := msg.Payload.([]int)[0]
 	// n.Logger.Printf("received SP_ADJ_REQ @ L%d from #%d", layer, msg.Src)
 	// wsLogger <- fmt.Sprintf("#%d received SP_ADJ_REQ @ L%d from #%d", n.ID, layer, msg.Src)
@@ -158,13 +162,20 @@ func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
 		n.sendTo(n.Parent, MSG_IF_UPDATE, append([]int{layer}, n.Interface[layer]...))
 		adjMsgCnt++
 		n.Logger.Printf("SP @ L%d cannot satisfy new IF composition, send SP_ADJ_REQ to #%d\n", layer, n.Parent)
-		wsLogger <- fmt.Sprintf("%d) #%d SP @ L%d cannot satisfy new IF composition, send SP_ADJ_REQ to #%d", adjMsgCnt, n.ID, layer, n.Parent)
+		wsLogger <- wsLog{
+			WS_LOG_MSG,
+			fmt.Sprintf("%d) #%d SP @ L%d cannot satisfy new IF composition, send SP_ADJ_REQ to #%d", adjMsgCnt, n.ID, layer, n.Parent),
+			nil,
+		}
 	} else {
 		n.adjustSubpartition(layer)
 	}
 }
 
 func (n *Node) subpartitionUpdateMsgHandler(msg Msg) {
+	if _, ok := affectedNodes[n.ID]; !ok {
+		affectedNodes[n.ID] = true
+	}
 	var layer = msg.Payload.([]int)[0]
 	// n.Logger.Printf("received SP_UPDATE @ L%d from #%d", layer, msg.Src)
 	// wsLogger <- fmt.Sprintf("#%d received SP_UPDATE @ L%d from #%d", n.ID, layer, msg.Src)
@@ -635,10 +646,22 @@ func (n *Node) updateInterface(layer int, newIF []int) {
 		n.sendTo(n.Parent, MSG_IF_UPDATE, append([]int{layer}, n.Interface[layer]...))
 		adjMsgCnt++
 		n.Logger.Printf("IF @ L%d changed and exceeded allocated SP, send SP_ADJ_REQ to #%d\n", layer, n.Parent)
-		wsLogger <- "Enter Sub-partition Adjustment phase..."
-		wsLogger <- fmt.Sprintf("%d) #%d IF @ L%d changed and exceeded allocated SP, send SP_ADJ_REQ to #%d", adjMsgCnt, n.ID, layer, n.Parent)
-
+		wsLogger <- wsLog{
+			WS_LOG_MSG,
+			"Enter Sub-partition Adjustment phase...",
+			nil,
+		}
+		wsLogger <- wsLog{
+			WS_LOG_MSG,
+			fmt.Sprintf("%d) #%d IF @ L%d changed and exceeded allocated SP, send SP_ADJ_REQ to #%d", adjMsgCnt, n.ID, layer, n.Parent),
+			nil,
+		}
 	}
+}
+
+// called in adjustment phase, objective is to minimize changes
+func (n *Node) reCompositeInterface(layer int) {
+
 }
 
 func (n *Node) adjustSubpartition(layer int) {
@@ -655,10 +678,15 @@ func (n *Node) adjustSubpartition(layer int) {
 				c.SubPartition[layer][2] != newSubpartition[2] ||
 				c.SubPartition[layer][3] != newSubpartition[3] {
 				c.SubPartition[layer] = newSubpartition
+				mutex.Lock()
 				adjMsgCnt++
-				n.Logger.Printf("send new SP @ L%d to %d %d\n", layer, c.ID, adjMsgCnt)
-				wsLogger <- fmt.Sprintf("%d) #%d send new SP @ L%d to %d", adjMsgCnt, n.ID, layer, c.ID)
-
+				mutex.Unlock()
+				n.Logger.Printf("send new SP @ L%d to #%d \n", layer, c.ID)
+				wsLogger <- wsLog{
+					WS_LOG_MSG,
+					fmt.Sprintf("%d) #%d send new SP @ L%d to #%d", adjMsgCnt, n.ID, layer, c.ID),
+					nil,
+				}
 				n.sendTo(c.ID, MSG_SP_UPDATE, append([]int{layer}, c.SubPartition[layer]...))
 			}
 		}
