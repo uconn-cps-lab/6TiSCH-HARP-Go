@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	MAX_CHANNEL = 16
+	MAX_CHANNEL = 10
 )
 
 var (

@@ -46,18 +46,7 @@ export default {
         series: [{
           data: [],
           type: 'scatter',
-          // symbol: "rect",
-          label: {
-            show: true,
-            position: "top",
-            color: "black",
-            fontSize: 13,
-            formatter: (item) => {
-              if(this.affectedNodes[item.value[0]]!=null)
-                return "#"+this.affectedNodes[item.value[0]-1]
-            },
-          },
-          symbolSize: 10,
+          symbolSize: 12,
           color: "blue",
           markLine: {
             data:[],
@@ -78,34 +67,38 @@ export default {
     }
   },
   methods: {
-    draw() {
+    draw(node) {
+      this.affectedNodes.push(node)
       this.option.xAxis.max = this.affectedNodes.length+1
-      for(var i=0;i<this.affectedNodes.length;i++) {
-        this.option.series[0].data.push([i+1,0])
-        this.option.series[0].markLine.data.push(
-          {
-            xAxis:i+1,
-            label: {
-              show: false
-            }
+      
+      this.option.series[0].data.push({
+        value:[this.affectedNodes.length,0],
+        label: {
+          show: true,
+          position: "top",
+          color:"black",
+          formatter:()=>{
+            return "#"+node
           }
-        )
-      }
-
+        }
+      })
+      this.option.series[0].markLine.data.push(
+        {
+          xAxis:this.affectedNodes.length,
+          silent: true,
+          label: {
+            show: false
+          }
+        }
+      )
     }
   },
   mounted() {
     this.$EventBus.$on("adjustment", ()=>{
-      window.console.log("enter adjustmetn phase")
+      this.option.series[0].data = []
       this.affectedNodes = []
       this.option.series[0].markLine.data = []
       this.cnt = 0
-      this.draw()
-    })
-
-    this.$EventBus.$on("affectedNodes", (node)=>{
-      this.affectedNodes.push(node)
-      this.draw()
     })
 
     this.$EventBus.$on("flow", (flow)=>{
@@ -115,6 +108,14 @@ export default {
       var src = flow[1]
       var dst = flow[2]
       var layer = flow[3]
+
+      if(this.affectedNodes.indexOf(src)==-1) {
+        this.draw(src)
+      }
+      if(this.affectedNodes.indexOf(dst)==-1) {
+        this.draw(dst)
+      }
+
       if(type==0x12) {
         type = "SP_ADJ_REQ"
       } else if(type==0x14) {
@@ -132,6 +133,7 @@ export default {
         }
       ])
     })
+    
   }
 }
 </script>

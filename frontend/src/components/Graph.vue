@@ -129,15 +129,15 @@ export default {
     this.$EventBus.$on("adjustment", ()=>{
       for(var i=0;i<Object.keys(this.trees).length;i++) {
         this.trees[i].itemStyle.color = "white"
-        this.trees[i].lineStyle.width = 8
+        // this.trees[i].lineStyle.width = 8
       }
       this.affectedNodes = []
     })
 
     this.$EventBus.$on("affectedNodes", (node)=>{
       this.trees[ node ].itemStyle.color = "red"
-      this.trees[ node ].lineStyle.width = 4
-      this.trees[ node ].lineStyle.color = "red"
+      // this.trees[ node ].lineStyle.width = 4
+      // this.trees[ node ].lineStyle.color = "red"
     })
   }
 }

@@ -186,7 +186,7 @@ export default {
           {
             type: "inside",
             start: 0,
-            end: 35  ,
+            end:35  ,
           },
           {
             bottom:-2,
