@@ -91,8 +91,8 @@ export default {
       seq:[],
       hp_res:{},
       
-      adjustedNode: 61,
-      adjustedLayer:2,
+      adjustedNode: 39,
+      adjustedLayer: 3,
       adjustedInterface:"5,1",
 
       option: {
@@ -286,17 +286,21 @@ export default {
             animationDurationUpdate: 500,
           },
         },
+        // subpartitions, idx=2
         {
           type: 'heatmap',
           data: [],
           markArea: {
             silent:true,
-            label: {
-              position:"bottom"
+            emphasis:{
+              label: {
+                fontSize: 20
+              }
             },
             data: []
           },
-        }]
+        },
+        ]
       },
     }
   },
@@ -311,14 +315,12 @@ export default {
           }
           this.$EventBus.$emit("hp_res", res.data.data)
           this.hp_res = res.data.data
-          this.drawSubPartition()
-          this.layer++
-          this.drawSubPartition()
-          this.layer++
-          // this.drawSubPartition()
-          // this.layer++
-          // this.drawSubPartition()
-          // this.layer++
+
+          for(var i=0;i<4;i++) {
+            this.drawSubPartition()
+            this.layer++
+          }
+          
         }
       )
     },
@@ -341,9 +343,10 @@ export default {
                   color:colors[node.layer+1], 
                   opacity:1, 
                   borderColor:"black",
-                  borderWidth:2-(node.layer*0.4)
+                  borderWidth:2-(node.layer*0.4),
                 },
-                label:{color:"black",fontWeight:"bold",fontSize:12, position:"inside"},
+                
+                label:{color:"black",fontWeight:"bold",fontSize:12-this.layer*0.5, position:"inside"},
                 xAxis: node.subpartition[l][0]+(node.layer*0.08),
                 yAxis: node.subpartition[l][2]+(node.layer*0.05),
               },

@@ -49,7 +49,7 @@ export default {
             left: '0%',
             bottom: '5%',
             right: '0%',
-            roam: true,
+            roam: false,
             symbol:"circle",
             symbolSize: 11,
             orient: 'vertical',
@@ -58,21 +58,17 @@ export default {
               borderColor: "red",
               shadowColor:"red"
             },
+            lineStyle: {
+              width:1.5
+            },
             label: {
               position: 'top',
               verticalAlign: 'middle',
               align: 'right',
-              fontSize: 13
+              fontSize: 11,
+              fontWeight: "bold"
             },
-
-            leaves: {
-                label: {
-                    position: 'top',
-                    verticalAlign: 'middle',
-                    align: 'right'
-                }
-            },
-            initialTreeDepth: 10,
+            initialTreeDepth: 11,
             // expandAndCollapse: false,
             animationDuration: 300,
             animationDurationUpdate: 300
@@ -88,11 +84,8 @@ export default {
           name:"0", 
           children:[], 
           symbolSize: 12,
-          label: {
-            fontSize: 12
-          },
           itemStyle:{color:"white"},
-          lineStyle:{width:8}
+          lineStyle:{width:5}
         } 
       }
       for(var i=1;i<Object.keys(this.topo).length;i++) {
@@ -100,10 +93,10 @@ export default {
         var parent = this.topo[node].parent
 
         if(this.trees[node]==null) 
-          this.trees[node] = {name: node, children:[], itemStyle:{color:"white"}}
+          this.trees[node] = {name: node, children:[], symbolSize:11, itemStyle:{color:"white"},lineStyle:{width:1.5} }
 
         if(this.trees[parent]==null)
-          this.trees[parent] = { name: parent, children: [ this.trees[node] ], itemStyle:{color:"white"}}
+          this.trees[parent] = { name: parent, children: [ this.trees[node] ], symbolSize:11, itemStyle:{color:"white"},lineStyle:{width:1.5}}
         else
           this.trees[parent].children.push(this.trees[node])
       }
@@ -129,14 +122,17 @@ export default {
     this.$EventBus.$on("adjustment", ()=>{
       for(var i=0;i<Object.keys(this.trees).length;i++) {
         this.trees[i].itemStyle.color = "white"
-        // this.trees[i].lineStyle.width = 8
+        this.trees[i].symbolSize = 11
       }
       this.affectedNodes = []
     })
 
     this.$EventBus.$on("affectedNodes", (nodes)=>{
-      for(var i=0;i<nodes.length;i++)
+      for(var i=0;i<nodes.length;i++) {
         this.trees[ nodes[i] ].itemStyle.color = "red"
+        this.trees[ nodes[i] ].symbolSize = 13
+        // this.trees[ nodes[i] ].label.fontSize = 13
+      }
     })
   }
 }

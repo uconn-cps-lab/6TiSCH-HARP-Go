@@ -23,7 +23,7 @@ export default {
       option: {
         grid: {
           top: "8%",
-          left:"2%",
+          left:"3%",
           right:"1%",
           bottom: "2%",
         },
@@ -36,6 +36,12 @@ export default {
         },
         yAxis: {
           // show: false,
+          name: "Msg",
+          nameLocation: "start",
+          nameGap: 10,
+          nameTextStyle:{
+            fontSize:15
+          },
           type: 'value',
           inverse: true,
           interval: 1,
@@ -43,22 +49,32 @@ export default {
           max: 10,
           data: []
         },
+        dataZoom: [
+          {
+            type: "inside",
+            start: 0,
+            end: 100,
+          },
+        ],
         series: [{
           data: [],
           type: 'scatter',
           symbolSize: 12,
           color: "blue",
+          animation: false,
           markLine: {
             data:[],
+            symbolSize: 8,
             lineStyle: {
               type:"solid",
-              symbolSize: 1,
+              symbolSize: 0.5,
               color:"black",
-              width: 1.5
+              width: 1.2
             },
             label: {
               show: true,
-              position: "middle"
+              position: "middle",
+              fontSize: 11,
             },
             animation: false
           }
@@ -77,6 +93,7 @@ export default {
           show: true,
           position: "top",
           color:"black",
+          fontSize:13,
           formatter:()=>{
             return "#"+node
           }
@@ -85,6 +102,7 @@ export default {
       this.option.series[0].markLine.data.push(
         {
           xAxis:this.affectedNodes.length,
+          lineStyle: {width:1.5},
           silent: true,
           label: {
             show: false
@@ -141,6 +159,6 @@ export default {
 <style scoped>
 #flow {
   width: 100%;
-  height: 400px
+  height: 425px
 }
 </style>

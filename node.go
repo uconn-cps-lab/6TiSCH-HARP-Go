@@ -171,10 +171,10 @@ func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
 		n.Interface[layer][1] > n.SubPartition[layer][3]-n.SubPartition[layer][2] {
 		n.sendTo(n.Parent, MSG_IF_UPDATE, append([]int{layer}, n.Interface[layer]...))
 		adjMsgCnt++
-		n.Logger.Printf("SP @ L%d cannot satisfy new IF composition, send SP_ADJ_REQ to #%d\n", layer, n.Parent)
+		n.Logger.Printf("SP @ L%d cannot handle, send SP_ADJ_REQ to #%d\n", layer, n.Parent)
 		wsLogger <- wsLog{
 			WS_LOG_MSG,
-			fmt.Sprintf("%d) #%d SP @ L%d cannot satisfy new IF composition, send SP_ADJ_REQ to #%d", adjMsgCnt, n.ID, layer, n.Parent),
+			fmt.Sprintf("%d) #%d SP @ L%d cannot handle, send SP_ADJ_REQ to #%d", adjMsgCnt, n.ID, layer, n.Parent),
 			nil,
 		}
 	} else {
@@ -652,7 +652,7 @@ func (n *Node) updateInterface(layer int, newIF []int) {
 		n.Interface[layer][1] > n.SubPartition[layer][3]-n.SubPartition[layer][2] {
 		n.sendTo(n.Parent, MSG_IF_UPDATE, append([]int{layer}, n.Interface[layer]...))
 		adjMsgCnt++
-		n.Logger.Printf("IF @ L%d changed and exceeded allocated SP, send SP_ADJ_REQ to #%d\n", layer, n.Parent)
+		n.Logger.Printf("IF @ L%d exceeds allocated SP, send SP_ADJ_REQ to #%d\n", layer, n.Parent)
 		wsLogger <- wsLog{
 			WS_LOG_MSG,
 			"Enter Sub-partition Adjustment phase...",
@@ -660,7 +660,7 @@ func (n *Node) updateInterface(layer int, newIF []int) {
 		}
 		wsLogger <- wsLog{
 			WS_LOG_MSG,
-			fmt.Sprintf("%d) #%d IF @ L%d changed and exceeded allocated SP, send SP_ADJ_REQ to #%d", adjMsgCnt, n.ID, layer, n.Parent),
+			fmt.Sprintf("%d) #%d IF @ L%d exceeds allocated SP, send SP_ADJ_REQ to #%d", adjMsgCnt, n.ID, layer, n.Parent),
 			nil,
 		}
 	}

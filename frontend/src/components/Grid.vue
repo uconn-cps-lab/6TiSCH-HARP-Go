@@ -165,7 +165,7 @@ export default {
         },
         series: [
           {
-            symbolSize: 16,
+            symbolSize: 14,
             itemStyle: {
               color: "deepskyblue",
             },
@@ -175,7 +175,7 @@ export default {
             label: {
               show: true,
               color: "black",
-              fontSize: 11,
+              fontSize: 10.5,
               formatter: (item) => {
                 for (var i = 0; i < Object.keys(this.nodes).length; i++) {
                   if (
@@ -226,7 +226,7 @@ export default {
             data: [],
             label: {
               show: true,
-              fontSize: 16,
+              fontSize: 14,
               formatter: () => {
                 return "0";
               },
@@ -235,7 +235,7 @@ export default {
               color: "purple",
               opacity: 0.85,
             },
-            symbolSize: 18,
+            symbolSize: 16,
             hoverAnimation: false,
             animation:false,
           },
@@ -678,9 +678,9 @@ export default {
     
 #grid-chart
   width 100%
-  height 325px  
+  height 320px  
 
 #bts
   font-size 0.9rem
-// need to change vuesax.css: `.vs-input--label: {font-size: 0.7rem  }`
+// need to change vuesax.css: `.vs-input--label:{font-size: 0.7rem  }`
 </style>
