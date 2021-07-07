@@ -3,28 +3,28 @@
    <div>
     <vs-row vs-align="flex-start" vs-w="12">
       <br><br><br><br><br>
-      <vs-col style="z-index:99" vs-offset="0.3" vs-w="0" v-show="false">  
+      <vs-col style="z-index:99" vs-offset="0.2" vs-w="4.2" v-show="true">  
         <Grid/>
       </vs-col>
-      <vs-col style="z-index:99" vs-offset="0.2" vs-w="4.4">  
+      <vs-col style="z-index:99" vs-offset="0.2" vs-w="7.2">  
         <Graph/>
       </vs-col> 
-      <vs-col style="z-index:99" vs-offset="0.2" vs-w="7">  
-        <Flow/>
-      </vs-col>
+      
       
     </vs-row>
     
     <vs-row>
-      <vs-col style="z-index:99" vs-offset="0.2" vs-w="7.4">  
+      <vs-col style="z-index:99" vs-offset="0.2" vs-w="7.8">  
         <Table/>
       </vs-col>
-      <vs-col style="z-index:99" vs-offset="0.2" vs-w="4">  
+      <vs-col style="z-index:99" vs-offset="0.2" vs-w="3.6">  
         <Console/>
       </vs-col> 
       
     </vs-row>
-    
+      <vs-col style="z-index:99" vs-offset="0.2" vs-w="11.6">  
+        <Flow/>
+      </vs-col>
     <vs-row>
       
     </vs-row>

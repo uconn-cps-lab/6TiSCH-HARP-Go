@@ -51,7 +51,7 @@ export default {
             right: '0%',
             roam: false,
             symbol:"circle",
-            symbolSize: 11,
+            symbolSize: 12,
             orient: 'vertical',
             itemStyle:{
               color:"white",
@@ -65,7 +65,7 @@ export default {
               position: 'top',
               verticalAlign: 'middle',
               align: 'right',
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: "bold"
             },
             initialTreeDepth: 11,
@@ -83,7 +83,7 @@ export default {
         0: {
           name:"0", 
           children:[], 
-          symbolSize: 12,
+          symbolSize: 13,
           itemStyle:{color:"white"},
           lineStyle:{width:5}
         } 
@@ -93,10 +93,10 @@ export default {
         var parent = this.topo[node].parent
 
         if(this.trees[node]==null) 
-          this.trees[node] = {name: node, children:[], symbolSize:11, itemStyle:{color:"white"},lineStyle:{width:1.5} }
+          this.trees[node] = {name: node, children:[], symbolSize:12, itemStyle:{color:"white"},lineStyle:{width:1.5} }
 
         if(this.trees[parent]==null)
-          this.trees[parent] = { name: parent, children: [ this.trees[node] ], symbolSize:11, itemStyle:{color:"white"},lineStyle:{width:1.5}}
+          this.trees[parent] = { name: parent, children: [ this.trees[node] ], symbolSize:12, itemStyle:{color:"white"},lineStyle:{width:1.5}}
         else
           this.trees[parent].children.push(this.trees[node])
       }

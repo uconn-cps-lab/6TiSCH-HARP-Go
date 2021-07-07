@@ -65,6 +65,7 @@ export default {
           markLine: {
             data:[],
             symbolSize: 8,
+            silent:true,
             lineStyle: {
               type:"solid",
               symbolSize: 0.5,
@@ -102,7 +103,7 @@ export default {
       this.option.series[0].markLine.data.push(
         {
           xAxis:this.affectedNodes.length,
-          lineStyle: {width:1.5},
+          lineStyle: {width:2,type:"dashed"},
           silent: true,
           label: {
             show: false
