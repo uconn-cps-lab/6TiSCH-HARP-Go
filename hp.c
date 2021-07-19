@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <time.h>
+
+#define MAX_CHANNEL 3
 
 struct Child
 {
@@ -24,9 +27,14 @@ void printRect(uint8_t rects[][3], uint8_t m)
     printf("\n");
 }
 
-int cmp(const void *a, const void *b)
+int cmpTs(const void *a, const void *b)
 {
-    return (*(uint8_t *)(b) - *(uint8_t *)(a));
+    return ((uint8_t *)(b))[0] - ((uint8_t *)(a))[0];
+}
+
+int cmpCh(const void *a, const void *b)
+{
+    return ((uint8_t *)(b))[1] - ((uint8_t *)(a))[1];
 }
 
 struct skyline_t
@@ -48,18 +56,16 @@ void printSkyline(struct skyline_t *s)
 uint8_t skylinePacking()
 {
     printf("Best-fit Skyline Packing\n");
+    // optimal: {9,5}
+    uint8_t rects[6][3] = {{9, 1, 0}, {8, 2, 0}, {1, 1, 0}, {6, 1, 0}, {2, 2, 0}, {2, 1, 0}};
+    printf("Input rectangles\n");
+    // printRect(rects, 6);
 
     uint8_t width = 0, height = 0;
 
-    // optimal: {9,5}
-    uint8_t rects[6][3] = {
-        {9, 1, 0}, {8, 2, 0}, {1, 1, 0}, {6, 1, 0}, {2, 2, 0}, {2, 1, 0}};
-    printf("Input rectangles\n");
-    printRect(rects, 6);
-
-    qsort(rects, 6, 3 * sizeof(uint8_t), cmp);
-    printf("Sorted by width\n");
-    printRect(rects, 6);
+    qsort(rects, 6, 3 * sizeof(uint8_t), cmpTs);
+    printf("Sorted by width (slots)\n");
+    // printRect(rects, 6);
 
     width = rects[0][0];
 
@@ -68,8 +74,8 @@ uint8_t skylinePacking()
     skyline->end = width;
     skyline->width = width;
     skyline->height = rects[0][1];
-    printf("Initialize skyline\n");
-    printSkyline(skyline);
+    // printf("Initialize skyline\n");
+    // printSkyline(skyline);
 
     skyline->next = NULL;
     struct skyline_t *head = (struct skyline_t *)malloc(sizeof(struct skyline_t));
@@ -95,7 +101,7 @@ uint8_t skylinePacking()
         {
             if (rects[i][2] == 0 && skyline->width >= rects[i][0])
             {
-                printf("place [%d, %d]\n", rects[i][0], rects[i][1]);
+                // printf("place [%d, %d]\n", rects[i][0], rects[i][1]);
                 cnt++;
                 hasFit = 1;
                 rects[i][2] = 1;
@@ -139,7 +145,7 @@ uint8_t skylinePacking()
         struct skyline_t *ss = head->next;
         while (ss != NULL)
         {
-            if (ss->width ==0)
+            if (ss->width == 0)
             {
                 ss->prev = ss->next;
                 ss = ss->prev;
@@ -157,18 +163,147 @@ uint8_t skylinePacking()
             }
             ss = ss->next;
         }
-        // struct skyline_t *s = head->next;
-        // while (s != NULL)
-        // {
-        //     printSkyline(s);
-        //     s = s->next;
-        // }
     }
+    struct skyline_t *s = head->next;
+    while (s != NULL)
+    {
+        if (height < s->height)
+            height = s->height;
+        s = s->next;
+    }
+    printf("Enclosing rectangle: {%d, %d}\n", width, height);
+
+    if (height > MAX_CHANNEL)
+    {
+        printf("Exceed channel limit (%d), rotate the strip\n", MAX_CHANNEL);
+        width = MAX_CHANNEL;
+        height = 0;
+
+        for (int i = 0; i < 6; i++)
+        {
+            rects[i][2] = 0;
+        }
+
+        qsort(rects, 6, 3 * sizeof(uint8_t), cmpCh);
+        // printf("Sorted by width (channels)\n");
+        // printRect(rects, 6);
+
+        struct skyline_t *skyline = (struct skyline_t *)malloc(sizeof(struct skyline_t));
+        skyline->start = 0;
+        skyline->end = width;
+        skyline->width = width;
+        skyline->height = 0;
+
+        skyline->next = NULL;
+        struct skyline_t *head = (struct skyline_t *)malloc(sizeof(struct skyline_t));
+        head->next = skyline;
+        // skyline->prev = head;
+
+        int cnt = 0;
+        while (cnt < 6)
+        {
+            struct skyline_t *tmp = head->next;
+            while (skyline != NULL)
+            {
+                if (skyline->height < tmp->height)
+                {
+                    tmp = skyline;
+                }
+                skyline = skyline->next;
+            }
+            skyline = tmp;
+
+            uint8_t hasFit = 0;
+            for (int i = 0; i < 6; i++)
+            {
+                if (rects[i][2] == 0 && skyline->width >= rects[i][1])
+                {
+                    // printf("place [%d, %d]\n", rects[i][0], rects[i][1]);
+                    cnt++;
+                    hasFit = 1;
+                    rects[i][2] = 1;
+                    if (skyline->width > rects[i][1])
+                    {
+                        // the remaining part
+                        struct skyline_t *new_skyline = (struct skyline_t *)malloc(sizeof(struct skyline_t));
+                        new_skyline->start = skyline->start + rects[i][1];
+                        new_skyline->end = skyline->end;
+                        new_skyline->width = skyline->width - rects[i][1];
+                        new_skyline->height = skyline->height;
+                        new_skyline->prev = skyline;
+                        new_skyline->next = skyline->next;
+
+                        // the used part
+                        skyline->end = skyline->start + rects[i][1];
+                        skyline->width = rects[i][1];
+                        skyline->height += rects[i][0];
+                        skyline->next = new_skyline;
+                    }
+                    else
+                    {
+                        skyline->height += rects[i][0];
+                    }
+                    break;
+                }
+            }
+
+            // wasted area
+            if (!hasFit)
+            {
+                skyline->prev->end = skyline->end;
+                skyline->prev->width += skyline->width;
+                skyline->prev->next = skyline->next;
+                if (skyline->next != NULL)
+                    skyline->next->prev = skyline->prev;
+                skyline = skyline->prev;
+            }
+
+            // merge
+            struct skyline_t *ss = head->next;
+            while (ss != NULL)
+            {
+                if (ss->width == 0)
+                {
+                    ss->prev = ss->next;
+                    ss = ss->prev;
+                }
+                if (ss->next != NULL)
+                {
+                    if (ss->height == ss->next->height)
+                    {
+                        ss->width += ss->next->width;
+                        ss->end = ss->next->end;
+                        ss->next = ss->next->next;
+                        if (ss->next != NULL)
+                            ss->next->prev = ss;
+                    }
+                }
+                ss = ss->next;
+            }
+        }
+        struct skyline_t *s = head->next;
+        while (s != NULL)
+        {
+            if (height < s->height)
+                height = s->height;
+            s = s->next;
+        }
+        printf("Enclosing rectangle: {%d, %d}\n", width, height);
+    }
+
     return 0;
 }
 
 int main()
 {
+    clock_t begin, end;
+    double cost;
+
+    begin = clock();
     skylinePacking();
+    end = clock();
+    cost = (double)(end - begin);
+    printf("time cost is: %f us\n", cost);
+
     return 0;
 }
