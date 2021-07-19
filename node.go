@@ -413,15 +413,13 @@ func (n *Node) packingBestFitSkyline(layer int) {
 	head.next = s
 
 	for len(childrenSlice) > 0 {
-		lines := []*skyline{}
-		for ss := head.next; ss != nil; ss = ss.next {
-			lines = append(lines, ss)
+		tmp := head.next
+		for s := head.next; s != nil; s = s.next {
+			if s.height < tmp.height {
+				tmp = s
+			}
 		}
-		sort.SliceStable(lines, func(i, j int) bool {
-			return lines[i].height < lines[j].height
-		})
-
-		s := lines[0]
+		s = tmp
 
 		var hasFit bool
 		for j, c := range childrenSlice {
@@ -516,16 +514,14 @@ func (n *Node) packingBestFitSkyline(layer int) {
 		head.next = s
 
 		for len(childrenSlice) > 0 {
-
-			lines := []*skyline{}
-			for ss := head.next; ss != nil; ss = ss.next {
-				lines = append(lines, ss)
+			tmp := head.next
+			for s := head.next; s != nil; s = s.next {
+				if s.height < tmp.height {
+					tmp = s
+				}
 			}
-			sort.SliceStable(lines, func(i, j int) bool {
-				return lines[i].height < lines[j].height
-			})
+			s = tmp
 
-			s := lines[0]
 			var hasFit bool
 			for j, c := range childrenSlice {
 				if n.ID == 0 && layer == 4 {
