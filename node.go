@@ -412,7 +412,6 @@ func (n *Node) packingBestFitSkyline(layer int) {
 	head := new(skyline)
 	head.next = s
 
-L1:
 	for len(childrenSlice) > 0 {
 		lines := []*skyline{}
 		for ss := head.next; ss != nil; ss = ss.next {
@@ -422,58 +421,58 @@ L1:
 			return lines[i].height < lines[j].height
 		})
 
-		for _, s := range lines {
-			var hasFit bool
-			for j, c := range childrenSlice {
+		s := lines[0]
+
+		var hasFit bool
+		for j, c := range childrenSlice {
+			if s.width >= c.Interface[layer][0] {
+				hasFit = true
+				c.SubPartitionOffset[layer] = []int{s.start, s.start + c.Interface[layer][0], s.height, s.height + c.Interface[layer][1]}
+				childrenSlice = append(childrenSlice[:j], childrenSlice[j+1:]...)
+
+				// create a new skyline, remaining part
 				if s.width >= c.Interface[layer][0] {
-					hasFit = true
-					c.SubPartitionOffset[layer] = []int{s.start, s.start + c.Interface[layer][0], s.height, s.height + c.Interface[layer][1]}
-					childrenSlice = append(childrenSlice[:j], childrenSlice[j+1:]...)
-
-					// create a new skyline, remaining part
-					if s.width >= c.Interface[layer][0] {
-						newS := &skyline{
-							start:  s.start + c.Interface[layer][0],
-							end:    s.end,
-							width:  s.width - c.Interface[layer][0],
-							height: s.height,
-							prev:   s,
-							next:   s.next,
-						}
-
-						// update the used skyline
-						s.end = s.start + c.Interface[layer][0]
-						s.width = c.Interface[layer][0]
-						s.height += c.Interface[layer][1]
-						s.next = newS
-					} else {
-						s.height += c.Interface[layer][1]
+					newS := &skyline{
+						start:  s.start + c.Interface[layer][0],
+						end:    s.end,
+						width:  s.width - c.Interface[layer][0],
+						height: s.height,
+						prev:   s,
+						next:   s.next,
 					}
-					break
+
+					// update the used skyline
+					s.end = s.start + c.Interface[layer][0]
+					s.width = c.Interface[layer][0]
+					s.height += c.Interface[layer][1]
+					s.next = newS
+				} else {
+					s.height += c.Interface[layer][1]
 				}
+				break
 			}
-			if !hasFit {
-				s.prev.end = s.end
-				s.prev.width += s.width
-				s.prev.next = s.next
-				if s.next != nil {
-					s.next.prev = s.prev
-				}
-			}
-			for ss := head.next; ss != nil; ss = ss.next {
-				if ss.next != nil {
-					if ss.height == ss.next.height {
-						ss.width += ss.next.width
-						ss.end = ss.next.end
-						ss.next = ss.next.next
-						if ss.next != nil {
-							ss.next.prev = ss
-						}
-					}
-				}
-			}
-			goto L1
 		}
+		if !hasFit {
+			s.prev.end = s.end
+			s.prev.width += s.width
+			s.prev.next = s.next
+			if s.next != nil {
+				s.next.prev = s.prev
+			}
+		}
+		for ss := head.next; ss != nil; ss = ss.next {
+			if ss.next != nil {
+				if ss.height == ss.next.height {
+					ss.width += ss.next.width
+					ss.end = ss.next.end
+					ss.next = ss.next.next
+					if ss.next != nil {
+						ss.next.prev = ss
+					}
+				}
+			}
+		}
+
 	}
 
 	for s = head.next; s != nil; s = s.next {
@@ -516,7 +515,6 @@ L1:
 		head := new(skyline)
 		head.next = s
 
-	L2:
 		for len(childrenSlice) > 0 {
 
 			lines := []*skyline{}
@@ -527,64 +525,62 @@ L1:
 				return lines[i].height < lines[j].height
 			})
 
-			for _, s := range lines {
-				var hasFit bool
-				for j, c := range childrenSlice {
+			s := lines[0]
+			var hasFit bool
+			for j, c := range childrenSlice {
+				if n.ID == 0 && layer == 4 {
+					fmt.Println(c.ID)
+				}
+				if s.width >= c.Interface[layer][1] {
+					hasFit = true
 					if n.ID == 0 && layer == 4 {
-						fmt.Println(c.ID)
+						fmt.Println("place", c.ID)
 					}
-					if s.width >= c.Interface[layer][1] {
-						hasFit = true
-						if n.ID == 0 && layer == 4 {
-							fmt.Println("place", c.ID)
+					c.SubPartitionOffset[layer] = []int{s.height, s.height + c.Interface[layer][0], s.start, s.start + c.Interface[layer][1]}
+					childrenSlice = append(childrenSlice[:j], childrenSlice[j+1:]...)
+
+					// create a new skyline, remaining part
+					if s.width > c.Interface[layer][1] {
+						newS := &skyline{
+							start:  s.start + c.Interface[layer][1],
+							end:    s.end,
+							width:  s.width - c.Interface[layer][1],
+							height: s.height,
+							prev:   s,
+							next:   s.next,
 						}
-						c.SubPartitionOffset[layer] = []int{s.height, s.height + c.Interface[layer][0], s.start, s.start + c.Interface[layer][1]}
-						childrenSlice = append(childrenSlice[:j], childrenSlice[j+1:]...)
-
-						// create a new skyline, remaining part
-						if s.width > c.Interface[layer][1] {
-							newS := &skyline{
-								start:  s.start + c.Interface[layer][1],
-								end:    s.end,
-								width:  s.width - c.Interface[layer][1],
-								height: s.height,
-								prev:   s,
-								next:   s.next,
-							}
-							// update the used skyline
-							s.end = s.start + c.Interface[layer][1]
-							s.width = c.Interface[layer][1]
-							s.height += c.Interface[layer][0]
-							s.next = newS
-						} else {
-							s.height += c.Interface[layer][0]
-						}
-
-						break
+						// update the used skyline
+						s.end = s.start + c.Interface[layer][1]
+						s.width = c.Interface[layer][1]
+						s.height += c.Interface[layer][0]
+						s.next = newS
+					} else {
+						s.height += c.Interface[layer][0]
 					}
-				}
 
-				if !hasFit {
-					s.prev.end = s.end
-					s.prev.width += s.width
-					s.prev.next = s.next
-					if s.next != nil {
-						s.next.prev = s.prev
-					}
+					break
 				}
-				for ss := head.next; ss != nil; ss = ss.next {
-					if ss.next != nil {
-						if ss.height == ss.next.height {
-							ss.width += ss.next.width
-							ss.end = ss.next.end
-							ss.next = ss.next.next
-							if ss.next != nil {
-								ss.next.prev = ss
-							}
+			}
+
+			if !hasFit {
+				s.prev.end = s.end
+				s.prev.width += s.width
+				s.prev.next = s.next
+				if s.next != nil {
+					s.next.prev = s.prev
+				}
+			}
+			for ss := head.next; ss != nil; ss = ss.next {
+				if ss.next != nil {
+					if ss.height == ss.next.height {
+						ss.width += ss.next.width
+						ss.end = ss.next.end
+						ss.next = ss.next.next
+						if ss.next != nil {
+							ss.next.prev = ss
 						}
 					}
 				}
-				goto L2
 			}
 
 		}
