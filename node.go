@@ -16,7 +16,6 @@ type Node struct {
 	Interface    map[int][]int  `json:"interface"`    // resource interface [slots, channels]
 	SubPartition map[int][]int  `json:"subpartition"` // allocated sub-partition [slots start&end, channels start&end]
 
-	maxChannel           int `json:"-"`
 	receivedInterfaceCnt int
 
 	// internal signal
@@ -42,7 +41,6 @@ func NewNode(id, parent, layer int) *Node {
 		Traffic:                       traffic,
 		Interface:                     make(map[int][]int),
 		SubPartition:                  make(map[int][]int),
-		maxChannel:                    MAX_CHANNEL,
 		sigWaitChildrenInterfaces:     make(chan int),
 		sigWaitAllocatedSubpartition:  make(chan int),
 		sigWaitSubpartitionAdjustment: make(chan int),
@@ -362,6 +360,8 @@ type skyline struct {
 	end    int
 	width  int
 	height int
+	prev   *skyline
+	next   *skyline
 }
 
 // Best-Fit skyline strip packing
@@ -402,98 +402,90 @@ func (n *Node) packingBestFitSkyline(layer int) {
 	}
 	childrenSlice = childrenSlice[1:]
 
-	skylines := []*skyline{}
-	skylines = append(skylines, &skyline{
+	s := &skyline{
 		start:  0,
 		end:    slots,
 		width:  slots,
 		height: channels,
-	})
+	}
+
+	head := new(skyline)
+	head.next = s
 
 L1:
 	for len(childrenSlice) > 0 {
-		// sort skylines from start to end
-		sort.SliceStable(skylines, func(i, j int) bool {
-			return skylines[i].start < skylines[j].start
-		})
-		// concat lines
-		for i := 0; i < len(skylines)-1; i++ {
-			if skylines[i].height == skylines[i+1].height && skylines[i].end == skylines[i+1].start {
-				skylines[i].end = skylines[i+1].end
-				skylines[i].width += skylines[i+1].width
-				skylines = append(skylines[:i+1], skylines[i+2:]...)
-			}
+		lines := []*skyline{}
+		for ss := head.next; ss != nil; ss = ss.next {
+			lines = append(lines, ss)
 		}
-		for i, s := range skylines {
-			if s.width == 0 {
-				skylines = append(skylines[:i], skylines[i+1:]...)
-			}
-		}
-		// sort by height, increasing order
-		sort.SliceStable(skylines, func(i, j int) bool {
-			if skylines[i].height < skylines[j].height {
-				return true
-			}
-			if skylines[i].height == skylines[j].height {
-				return skylines[i].start < skylines[j].start
-			}
-			return false
+		sort.SliceStable(lines, func(i, j int) bool {
+			return lines[i].height < lines[j].height
 		})
 
-		// place child to the best fit skyline
-		for _, s := range skylines {
+		for _, s := range lines {
 			var hasFit bool
 			for j, c := range childrenSlice {
 				if s.width >= c.Interface[layer][0] {
+					hasFit = true
 					c.SubPartitionOffset[layer] = []int{s.start, s.start + c.Interface[layer][0], s.height, s.height + c.Interface[layer][1]}
 					childrenSlice = append(childrenSlice[:j], childrenSlice[j+1:]...)
 
 					// create a new skyline, remaining part
-					skylines = append(skylines, &skyline{
-						start:  s.start + c.Interface[layer][0],
-						end:    s.end,
-						width:  s.width - c.Interface[layer][0],
-						height: s.height,
-					})
-					// update the used skyline
-					s.end = s.start + c.Interface[layer][0]
-					s.width = c.Interface[layer][0]
-					s.height += c.Interface[layer][1]
+					if s.width >= c.Interface[layer][0] {
+						newS := &skyline{
+							start:  s.start + c.Interface[layer][0],
+							end:    s.end,
+							width:  s.width - c.Interface[layer][0],
+							height: s.height,
+							prev:   s,
+							next:   s.next,
+						}
 
-					hasFit = true
+						// update the used skyline
+						s.end = s.start + c.Interface[layer][0]
+						s.width = c.Interface[layer][0]
+						s.height += c.Interface[layer][1]
+						s.next = newS
+					} else {
+						s.height += c.Interface[layer][1]
+					}
 					break
 				}
 			}
-
 			if !hasFit {
-				// increase height to align with its lowest neighbor
-				var left, right = 16, 16
-				for _, ss := range skylines {
-					if ss.end == s.start {
-						left = ss.height
-					} else if ss.start == s.end {
-						right = ss.height
+				s.prev.end = s.end
+				s.prev.width += s.width
+				s.prev.next = s.next
+				if s.next != nil {
+					s.next.prev = s.prev
+				}
+			}
+			for ss := head.next; ss != nil; ss = ss.next {
+				if ss.next != nil {
+					if ss.height == ss.next.height {
+						ss.width += ss.next.width
+						ss.end = ss.next.end
+						ss.next = ss.next.next
+						if ss.next != nil {
+							ss.next.prev = ss
+						}
 					}
 				}
-				if left <= right {
-					s.height = left
-				} else if right < left {
-					s.height = right
-				}
-
 			}
 			goto L1
 		}
 	}
-	for _, s := range skylines {
+
+	for s = head.next; s != nil; s = s.next {
 		if channels < s.height {
 			channels = s.height
 		}
 	}
+
 	// exceed channel limit, use max channel as the width of the strip and recompute
-	if channels > n.maxChannel {
+	if channels > MAX_CHANNEL {
 		slots = 0
-		channels = n.maxChannel
+		channels = MAX_CHANNEL
 
 		childrenSlice = []*Child{}
 		for _, c := range n.Children {
@@ -514,95 +506,95 @@ L1:
 			return false
 		})
 
-		skylines := []*skyline{}
-		skylines = append(skylines, &skyline{
+		s := &skyline{
 			start:  0,
 			end:    channels,
 			width:  channels,
 			height: 0,
-		})
+		}
+
+		head := new(skyline)
+		head.next = s
 
 	L2:
 		for len(childrenSlice) > 0 {
-			// sort skylines from start to end
-			sort.SliceStable(skylines, func(i, j int) bool {
-				return skylines[i].start < skylines[j].start
-			})
-			// concat lines
-			for i := 0; i < len(skylines)-1; i++ {
-				if skylines[i].height == skylines[i+1].height && skylines[i].end == skylines[i+1].start {
-					skylines[i].end = skylines[i+1].end
-					skylines[i].width += skylines[i+1].width
-					skylines = append(skylines[:i+1], skylines[i+2:]...)
-				}
-			}
-			for i, s := range skylines {
-				if s.width == 0 {
-					skylines = append(skylines[:i], skylines[i+1:]...)
-				}
-			}
 
-			// sort by height, increasing order
-			sort.SliceStable(skylines, func(i, j int) bool {
-				if skylines[i].height < skylines[j].height {
-					return true
-				}
-				if skylines[i].height == skylines[j].height {
-					return skylines[i].start < skylines[j].start
-				}
-				return false
+			lines := []*skyline{}
+			for ss := head.next; ss != nil; ss = ss.next {
+				lines = append(lines, ss)
+			}
+			sort.SliceStable(lines, func(i, j int) bool {
+				return lines[i].height < lines[j].height
 			})
 
-			// place child to the best fit skyline
-			for _, s := range skylines {
+			for _, s := range lines {
 				var hasFit bool
 				for j, c := range childrenSlice {
+					if n.ID == 0 && layer == 4 {
+						fmt.Println(c.ID)
+					}
 					if s.width >= c.Interface[layer][1] {
+						hasFit = true
+						if n.ID == 0 && layer == 4 {
+							fmt.Println("place", c.ID)
+						}
 						c.SubPartitionOffset[layer] = []int{s.height, s.height + c.Interface[layer][0], s.start, s.start + c.Interface[layer][1]}
 						childrenSlice = append(childrenSlice[:j], childrenSlice[j+1:]...)
 
 						// create a new skyline, remaining part
-						skylines = append(skylines, &skyline{
-							start:  s.start + c.Interface[layer][1],
-							end:    s.end,
-							width:  s.width - c.Interface[layer][1],
-							height: s.height,
-						})
-						// update the used skyline
-						s.end = s.start + c.Interface[layer][1]
-						s.width = c.Interface[layer][1]
-						s.height += c.Interface[layer][0]
+						if s.width > c.Interface[layer][1] {
+							newS := &skyline{
+								start:  s.start + c.Interface[layer][1],
+								end:    s.end,
+								width:  s.width - c.Interface[layer][1],
+								height: s.height,
+								prev:   s,
+								next:   s.next,
+							}
+							// update the used skyline
+							s.end = s.start + c.Interface[layer][1]
+							s.width = c.Interface[layer][1]
+							s.height += c.Interface[layer][0]
+							s.next = newS
+						} else {
+							s.height += c.Interface[layer][0]
+						}
 
-						hasFit = true
 						break
 					}
 				}
 
 				if !hasFit {
-					// increase height to align with its lowest neighbor
-					var left, right = 1000, 1000
-					for _, ss := range skylines {
-						if ss.end == s.start {
-							left = ss.height
-						} else if ss.start == s.end {
-							right = ss.height
-						}
+					s.prev.end = s.end
+					s.prev.width += s.width
+					s.prev.next = s.next
+					if s.next != nil {
+						s.next.prev = s.prev
 					}
-					if left <= right {
-						s.height = left
-					} else if right < left {
-						s.height = right
+				}
+				for ss := head.next; ss != nil; ss = ss.next {
+					if ss.next != nil {
+						if ss.height == ss.next.height {
+							ss.width += ss.next.width
+							ss.end = ss.next.end
+							ss.next = ss.next.next
+							if ss.next != nil {
+								ss.next.prev = ss
+							}
+						}
 					}
 				}
 				goto L2
 			}
+
 		}
-		for _, s := range skylines {
+		for s = head.next; s != nil; s = s.next {
 			if slots < s.height {
 				slots = s.height
 			}
 		}
 	}
+
 	n.Interface[layer] = []int{slots, channels}
 
 }
@@ -616,7 +608,7 @@ func (n *Node) allocateSubpartition() {
 			if n.Interface[l] == nil {
 				continue
 			}
-			n.SubPartition[l] = []int{slotIdx, slotIdx + redundant + n.Interface[l][0], 1, 11}
+			n.SubPartition[l] = []int{slotIdx, slotIdx + redundant + n.Interface[l][0], 1, MAX_CHANNEL + 1}
 			slotIdx += redundant + n.Interface[l][0]
 		}
 	}

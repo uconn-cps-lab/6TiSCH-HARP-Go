@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	MAX_CHANNEL = 10
+	MAX_CHANNEL = 8
 )
 
 var (
@@ -61,10 +61,10 @@ func buildTopo() {
 		}
 	}
 
-	fmt.Printf("%d-hop %d-nodes network starts\n", MaxLayer, len(Nodes))
+	fmt.Printf("%d-hop %d-nodes network up\n", MaxLayer, len(Nodes))
 	wsLogger <- wsLog{
 		WS_LOG_MSG,
-		fmt.Sprintf("%d-hop %d-nodes network starts", MaxLayer, len(Nodes)),
+		fmt.Sprintf("%d-hop %d-nodes network up", MaxLayer, len(Nodes)),
 		nil,
 	}
 	for l := MaxLayer; l > 0; l-- {

@@ -103,7 +103,7 @@ export default {
       this.option.series[0].markLine.data.push(
         {
           xAxis:this.affectedNodes.length,
-          lineStyle: {width:2,type:"dashed"},
+          lineStyle: {width:1.5},
           silent: true,
           label: {
             show: false

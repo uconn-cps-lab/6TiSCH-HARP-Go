@@ -186,12 +186,12 @@ export default {
           {
             type: "inside",
             start: 0,
-            end:35  ,
+            end:60  ,
           },
           {
             bottom:-2,
             start: 0,
-            end: 35,
+            end: 60,
             handleIcon:
               "M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z",
             handleSize: "80%",
@@ -307,16 +307,17 @@ export default {
   methods: {
     getHPRes() {
       this.layer = 0
+      this.option.series[2].markArea.data = []
       this.$api.partition.getNodes()
       .then(res=>{
           if(res.data.flag!=1) return -1
-          if(this.layer==0) {
-            this.option.series[2].markArea.data = []
-          }
+          // if(this.layer==0) {
+            
+          // }
           this.$EventBus.$emit("hp_res", res.data.data)
           this.hp_res = res.data.data
 
-          for(var i=0;i<4;i++) {
+          for(var i=0;i<2;i++) {
             this.drawSubPartition()
             this.layer++
           }
@@ -326,6 +327,14 @@ export default {
     },
     drawSubPartition() {
         this.$EventBus.$emit("current_layer", this.layer)
+        var pos = "inside"
+        var fontSize = 12.5
+        var color = "black"
+        if(this.layer==0) {
+          fontSize = 15
+          pos = "insideTop"
+          color = "white"
+        }
         var colors = ['smokewhite','grey','orange', 'yellow','#05c54e','lightblue','purple']
 
         for(var i in this.hp_res) {
@@ -333,12 +342,15 @@ export default {
           if(node.layer != this.layer) continue
 
           for(var l in node.subpartition) {
+            var name = node.id.toString()
+            if(this.layer==0) name = "SP(0"+", "+l+")"
+            
             // var l = node.layer+1
             if(node.subpartition[l]==null) continue
             this.option.series[2].markArea.data.push([
               {
                 // name: "SP("+node.id+", "+l+")",
-                name: node.id.toString(),
+                name: name,
                 itemStyle: {
                   color:colors[node.layer+1], 
                   opacity:1, 
@@ -346,7 +358,7 @@ export default {
                   borderWidth:2-(node.layer*0.4),
                 },
                 
-                label:{color:"black",fontWeight:"bold",fontSize:12-this.layer*0.5, position:"inside"},
+                label:{color:color,fontWeight:"bold",fontSize:fontSize-node.layer*0.5, position:pos},
                 xAxis: node.subpartition[l][0]+(node.layer*0.08),
                 yAxis: node.subpartition[l][2]+(node.layer*0.05),
               },

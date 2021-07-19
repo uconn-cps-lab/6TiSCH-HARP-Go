@@ -107,11 +107,12 @@ export default {
   },
   data() {
     return {
+      loadTopo: true,
       gwPos: [],
       sizeX: 16,
       sizeY: 16,
       nodesNumber: 65, // include gateway
-      maxHop: 4,
+      maxHop: 5,
       txRange: 9, // in square
       childrenCnt: {0:0},
       parent_capacity:4, // except gateway
@@ -304,8 +305,7 @@ export default {
       var yy = Math.round((sizeY - 10) * Math.random() + 5);
       
       this.gwPos = [xx, yy];
-      this.gwPos = nodes[0].position
-      // this.gwPos = [10,10]
+      if(this.loadTopo) this.gwPos = nodes[0].position
       this.nodes = {
         0: { parent: -1, position: this.gwPos, layer: -1, path: [0] },
       };
@@ -324,8 +324,7 @@ export default {
         this.childrenCnt[i] = 0
       }
 
-      
-      this.nodes = nodes
+      if(this.loadTopo) this.nodes = nodes
       window.console.log(nodes.length)
       for (var nn = 0; nn < Object.keys(this.nodes).length; nn++) {
         this.option.series[0].data.push(this.nodes[nn].position);
