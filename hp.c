@@ -1,93 +1,67 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <time.h>
+#include "hp.h"
 
-#define MAX_CHANNEL 4
+HARP_child_t HARP_children[6];
 
-typedef struct
+int sortChildrenByIfaceTs(const void *a, const void *b)
 {
-    uint8_t id;
-    uint8_t iface[5][2];
-    uint8_t sp_log[5][4];
-    uint8_t sp_phy[5][4];
-} Child;
+    return ((HARP_child_t *)b)->iface[0].ts - ((HARP_child_t *)a)->iface[0].ts;
+}
 
-void printRect(uint8_t rects[][3], uint8_t m)
+int sortChildrenByIfaceCh(const void *a, const void *b)
 {
-    for (uint8_t i = 0; i < m; i++)
+    return ((HARP_child_t *)b)->iface[0].ch - ((HARP_child_t *)a)->iface[0].ch;
+}
+
+void initChildren()
+{
+    uint8_t rects[6][3] = {{6, 1, 32}, {8, 2, 27}, {9, 1, 16}, {1, 1, 24}, {2, 2, 23}, {2, 1, 29}};
+    for (int i = 0; i < 6; i++)
     {
-        printf("\t{");
-        for (uint8_t j = 0; j < 2; j++)
-        {
-            printf("%d,", rects[i][j]);
-        }
-        printf("\b}, ");
+        HARP_children[i].id = rects[i][2];
+        HARP_children[i].iface[0].ts = rects[i][0];
+        HARP_children[i].iface[0].ch = rects[i][1];
     }
-    printf("\n");
+    // qsort(HARP_children, 6, sizeof(HARP_child_t), sortChildrenByIfaceTs);
+    // printf("first HARP_child_t's interface {ts:%d, ch:%d}\n", HARP_children[0].iface[0].ts, HARP_children[0].iface[0].ch);
+    // printf("first HARP_child_t's sub-partition {%d, %d}\n", HARP_children[0].sp_[0].ts_start,  HARP_children[0].sp_log[0].ts_end);
 }
 
-int cmpTs(const void *a, const void *b)
-{
-    return ((uint8_t *)(b))[0] - ((uint8_t *)(a))[0];
-}
-
-int cmpCh(const void *a, const void *b)
-{
-    return ((uint8_t *)(b))[1] - ((uint8_t *)(a))[1];
-}
-
-typedef struct __skyline_t
-{
-    uint8_t start;
-    uint8_t end;
-    uint8_t width;
-    uint8_t height;
-    struct __skyline_t *prev;
-    struct __skyline_t *next;
-} skyline_t;
-
-void printSkyline(skyline_t *s)
-{
-    printf("\tstart: %d, end: %d, width: %d, height: %d\n",
-           s->start, s->end, s->width, s->height);
-}
 
 uint8_t width, height;
 
 uint8_t skylinePacking()
 {
+    int layer = 0;
     width = 0;
     height = 0;
     printf("Best-fit Skyline Packing\n");
-    // optimal: {9,5}
-    uint8_t rects[6][3] = {{9, 1, 0}, {8, 2, 0}, {1, 1, 0}, {6, 1, 0}, {2, 2, 0}, {2, 1, 0}};
-    printf("Input rectangles\n");
-    // printRect(rects, 6);
 
-    qsort(rects, 6, 3 * sizeof(uint8_t), cmpTs);
-    printf("Sorted by width (slots)\n");
-    // printRect(rects, 6);
+    qsort(HARP_children, 6, sizeof(HARP_child_t), sortChildrenByIfaceTs);
 
-    width = rects[0][0];
+    HARP_children[0].sp_log[layer].ts_start = 0;
+    HARP_children[0].sp_log[layer].ts_end = HARP_children[0].iface[layer].ts;
+    HARP_children[0].sp_log[layer].ch_start = 0;
+    HARP_children[0].sp_log[layer].ch_end = 0 + HARP_children[layer].iface[layer].ch;
 
-    skyline_t *skyline = (skyline_t *)malloc(sizeof(skyline_t));
+    width = HARP_children[0].iface[layer].ts;
+
+    HARP_skyline_t *skyline = (HARP_skyline_t *)malloc(sizeof(HARP_skyline_t));
     skyline->start = 0;
     skyline->end = width;
     skyline->width = width;
-    skyline->height = rects[0][1];
-    // printf("Initialize skyline\n");
-    // printSkyline(skyline);
+    skyline->height = HARP_children[0].iface[layer].ch;
 
     skyline->next = NULL;
-    skyline_t *head = (skyline_t *)malloc(sizeof(skyline_t));
+    HARP_skyline_t *head = (HARP_skyline_t *)malloc(sizeof(HARP_skyline_t));
     head->next = skyline;
-    // skyline->prev = head;
+
+    printf("HARP_child_t #%d's logical sub-partition {%d, %d, %d, %d}\n", HARP_children[0].id, HARP_children[0].sp_log[0].ts_start, HARP_children[0].sp_log[0].ts_end,
+           HARP_children[0].sp_log[0].ch_start, HARP_children[0].sp_log[0].ch_end);
 
     int cnt = 0;
     while (cnt < 5)
     {
-        skyline_t *tmp = head->next;
+        HARP_skyline_t *tmp = head->next;
         while (skyline != NULL)
         {
             if (skyline->height < tmp->height)
@@ -101,32 +75,39 @@ uint8_t skylinePacking()
         uint8_t hasFit = 0;
         for (int i = 1; i < 6; i++)
         {
-            if (rects[i][2] == 0 && skyline->width >= rects[i][0])
+            if (HARP_children[i].sp_log[layer].ts_start == 0 && HARP_children[i].sp_log[layer].ts_end == 0 &&
+                skyline->width >= HARP_children[i].iface[layer].ts)
             {
-                // printf("place [%d, %d]\n", rects[i][0], rects[i][1]);
                 cnt++;
                 hasFit = 1;
-                rects[i][2] = 1;
-                if (skyline->width > rects[i][0])
+                HARP_children[i].sp_log[layer].ts_start = skyline->start;
+                HARP_children[i].sp_log[layer].ts_end = skyline->start + HARP_children[i].iface[layer].ts;
+                HARP_children[i].sp_log[layer].ch_start = skyline->height;
+                HARP_children[i].sp_log[layer].ch_end = skyline->height + HARP_children[i].iface[layer].ch;
+
+                printf("HARP_child_t #%d's logical sub-partition {%d, %d, %d, %d}\n", HARP_children[i].id, HARP_children[i].sp_log[0].ts_start, HARP_children[i].sp_log[0].ts_end,
+                       HARP_children[i].sp_log[0].ch_start, HARP_children[i].sp_log[0].ch_end);
+
+                if (skyline->width > HARP_children[i].iface[layer].ts)
                 {
                     // the remaining part
-                    skyline_t *new_skyline = (skyline_t *)malloc(sizeof(skyline_t));
-                    new_skyline->start = skyline->start + rects[i][0];
+                    HARP_skyline_t *new_skyline = (HARP_skyline_t *)malloc(sizeof(HARP_skyline_t));
+                    new_skyline->start = skyline->start + HARP_children[i].iface[layer].ts;
                     new_skyline->end = skyline->end;
-                    new_skyline->width = skyline->width - rects[i][0];
+                    new_skyline->width = skyline->width - HARP_children[i].iface[layer].ts;
                     new_skyline->height = skyline->height;
                     new_skyline->prev = skyline;
                     new_skyline->next = skyline->next;
 
                     // the used part
-                    skyline->end = skyline->start + rects[i][0];
-                    skyline->width = rects[i][0];
-                    skyline->height += rects[i][1];
+                    skyline->end = skyline->start + HARP_children[i].iface[layer].ts;
+                    skyline->width = HARP_children[i].iface[layer].ts;
+                    skyline->height += HARP_children[i].iface[layer].ch;
                     skyline->next = new_skyline;
                 }
                 else
                 {
-                    skyline->height += rects[i][1];
+                    skyline->height += HARP_children[i].iface[layer].ch;
                 }
                 break;
             }
@@ -144,7 +125,7 @@ uint8_t skylinePacking()
         }
 
         // merge
-        skyline_t *ss = head->next;
+        HARP_skyline_t *ss = head->next;
         while (ss != NULL)
         {
             if (ss->width == 0)
@@ -166,12 +147,12 @@ uint8_t skylinePacking()
             ss = ss->next;
         }
     }
-    skyline_t *s = head->next;
+    HARP_skyline_t *s = head->next;
     while (s != NULL)
     {
         if (height < s->height)
             height = s->height;
-        skyline_t *next = s->next;
+        HARP_skyline_t *next = s->next;
         free(s);
         s = next;
     }
@@ -179,34 +160,35 @@ uint8_t skylinePacking()
 
     if (height > MAX_CHANNEL)
     {
-        printf("Exceed channel limit (%d), rotate the strip\n", MAX_CHANNEL);
+        printf("[!] Exceed channel limit (%d), rotate the strip\n", MAX_CHANNEL);
         width = MAX_CHANNEL;
         height = 0;
 
         for (int i = 0; i < 6; i++)
         {
-            rects[i][2] = 0;
+            HARP_children[i].sp_log[layer].ts_start = 0;
+            HARP_children[i].sp_log[layer].ts_end = 0;
+            HARP_children[i].sp_log[layer].ch_start = 0;
+            HARP_children[i].sp_log[layer].ch_end = 0;
         }
+        qsort(HARP_children, 6, sizeof(HARP_child_t), sortChildrenByIfaceCh);
 
-        qsort(rects, 6, 3 * sizeof(uint8_t), cmpCh);
-        // printf("Sorted by width (channels)\n");
-        // printRect(rects, 6);
 
-        skyline_t *skyline = (skyline_t *)malloc(sizeof(skyline_t));
+        HARP_skyline_t *skyline = (HARP_skyline_t *)malloc(sizeof(HARP_skyline_t));
         skyline->start = 0;
         skyline->end = width;
         skyline->width = width;
         skyline->height = 0;
 
         skyline->next = NULL;
-        skyline_t *head = (skyline_t *)malloc(sizeof(skyline_t));
+        HARP_skyline_t *head = (HARP_skyline_t *)malloc(sizeof(HARP_skyline_t));
         head->next = skyline;
         // skyline->prev = head;
 
         int cnt = 0;
         while (cnt < 6)
         {
-            skyline_t *tmp = head->next;
+            HARP_skyline_t *tmp = head->next;
             while (skyline != NULL)
             {
                 if (skyline->height < tmp->height)
@@ -220,32 +202,40 @@ uint8_t skylinePacking()
             uint8_t hasFit = 0;
             for (int i = 0; i < 6; i++)
             {
-                if (rects[i][2] == 0 && skyline->width >= rects[i][1])
+                if (HARP_children[i].sp_log[layer].ts_start == 0 && HARP_children[i].sp_log[layer].ts_end == 0 &&
+                    skyline->width >= HARP_children[i].iface[layer].ch)
                 {
-                    // printf("place [%d, %d]\n", rects[i][0], rects[i][1]);
                     cnt++;
                     hasFit = 1;
-                    rects[i][2] = 1;
-                    if (skyline->width > rects[i][1])
+
+                    HARP_children[i].sp_log[layer].ts_start = skyline->height;
+                    HARP_children[i].sp_log[layer].ts_end = skyline->height + HARP_children[i].iface[layer].ts;
+                    HARP_children[i].sp_log[layer].ch_start = skyline->start;
+                    HARP_children[i].sp_log[layer].ch_end = skyline->start + HARP_children[i].iface[layer].ch;
+
+                    printf("HARP_child_t #%d's logical sub-partition {%d, %d, %d, %d}\n", HARP_children[i].id, HARP_children[i].sp_log[0].ts_start, HARP_children[i].sp_log[0].ts_end,
+                           HARP_children[i].sp_log[0].ch_start, HARP_children[i].sp_log[0].ch_end);
+
+                    if (skyline->width > HARP_children[i].iface[layer].ch)
                     {
                         // the remaining part
-                        skyline_t *new_skyline = (skyline_t *)malloc(sizeof(skyline_t));
-                        new_skyline->start = skyline->start + rects[i][1];
+                        HARP_skyline_t *new_skyline = (HARP_skyline_t *)malloc(sizeof(HARP_skyline_t));
+                        new_skyline->start = skyline->start + HARP_children[i].iface[layer].ch;
                         new_skyline->end = skyline->end;
-                        new_skyline->width = skyline->width - rects[i][1];
+                        new_skyline->width = skyline->width - HARP_children[i].iface[layer].ch;
                         new_skyline->height = skyline->height;
                         new_skyline->prev = skyline;
                         new_skyline->next = skyline->next;
 
                         // the used part
-                        skyline->end = skyline->start + rects[i][1];
-                        skyline->width = rects[i][1];
-                        skyline->height += rects[i][0];
+                        skyline->end = skyline->start + HARP_children[i].iface[layer].ch;
+                        skyline->width = HARP_children[i].iface[layer].ch;
+                        skyline->height += HARP_children[i].iface[layer].ts;
                         skyline->next = new_skyline;
                     }
                     else
                     {
-                        skyline->height += rects[i][0];
+                        skyline->height += HARP_children[i].iface[layer].ts;
                     }
                     break;
                 }
@@ -263,7 +253,7 @@ uint8_t skylinePacking()
             }
 
             // merge
-            skyline_t *ss = head->next;
+            HARP_skyline_t *ss = head->next;
             while (ss != NULL)
             {
                 if (ss->width == 0)
@@ -285,12 +275,12 @@ uint8_t skylinePacking()
                 ss = ss->next;
             }
         }
-        skyline_t *s = head->next;
+        HARP_skyline_t *s = head->next;
         while (s != NULL)
         {
             if (height < s->height)
                 height = s->height;
-            skyline_t *next = s->next;
+            HARP_skyline_t *next = s->next;
             free(s);
             s = next;
         }
@@ -302,14 +292,7 @@ uint8_t skylinePacking()
 
 int main()
 {
-    clock_t begin, end;
-    double cost;
-
-    begin = clock();
+    initChildren();
     skylinePacking();
-    end = clock();
-    cost = (double)(end - begin);
-    printf("time cost is: %f us\n", cost);
-
     return 0;
 }
