@@ -3,15 +3,15 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define MAX_CHANNEL 3
+#define MAX_CHANNEL 4
 
-struct Child
+typedef struct
 {
     uint8_t id;
     uint8_t iface[5][2];
     uint8_t sp_log[5][4];
     uint8_t sp_phy[5][4];
-};
+} Child;
 
 void printRect(uint8_t rects[][3], uint8_t m)
 {
@@ -37,31 +37,33 @@ int cmpCh(const void *a, const void *b)
     return ((uint8_t *)(b))[1] - ((uint8_t *)(a))[1];
 }
 
-struct skyline_t
+typedef struct __skyline_t
 {
     uint8_t start;
     uint8_t end;
     uint8_t width;
     uint8_t height;
-    struct skyline_t *prev;
-    struct skyline_t *next;
-};
+    struct __skyline_t *prev;
+    struct __skyline_t *next;
+} skyline_t;
 
-void printSkyline(struct skyline_t *s)
+void printSkyline(skyline_t *s)
 {
     printf("\tstart: %d, end: %d, width: %d, height: %d\n",
            s->start, s->end, s->width, s->height);
 }
 
+uint8_t width, height;
+
 uint8_t skylinePacking()
 {
+    width = 0;
+    height = 0;
     printf("Best-fit Skyline Packing\n");
     // optimal: {9,5}
     uint8_t rects[6][3] = {{9, 1, 0}, {8, 2, 0}, {1, 1, 0}, {6, 1, 0}, {2, 2, 0}, {2, 1, 0}};
     printf("Input rectangles\n");
     // printRect(rects, 6);
-
-    uint8_t width = 0, height = 0;
 
     qsort(rects, 6, 3 * sizeof(uint8_t), cmpTs);
     printf("Sorted by width (slots)\n");
@@ -69,7 +71,7 @@ uint8_t skylinePacking()
 
     width = rects[0][0];
 
-    struct skyline_t *skyline = (struct skyline_t *)malloc(sizeof(struct skyline_t));
+    skyline_t *skyline = (skyline_t *)malloc(sizeof(skyline_t));
     skyline->start = 0;
     skyline->end = width;
     skyline->width = width;
@@ -78,14 +80,14 @@ uint8_t skylinePacking()
     // printSkyline(skyline);
 
     skyline->next = NULL;
-    struct skyline_t *head = (struct skyline_t *)malloc(sizeof(struct skyline_t));
+    skyline_t *head = (skyline_t *)malloc(sizeof(skyline_t));
     head->next = skyline;
     // skyline->prev = head;
 
     int cnt = 0;
     while (cnt < 5)
     {
-        struct skyline_t *tmp = head->next;
+        skyline_t *tmp = head->next;
         while (skyline != NULL)
         {
             if (skyline->height < tmp->height)
@@ -108,7 +110,7 @@ uint8_t skylinePacking()
                 if (skyline->width > rects[i][0])
                 {
                     // the remaining part
-                    struct skyline_t *new_skyline = (struct skyline_t *)malloc(sizeof(struct skyline_t));
+                    skyline_t *new_skyline = (skyline_t *)malloc(sizeof(skyline_t));
                     new_skyline->start = skyline->start + rects[i][0];
                     new_skyline->end = skyline->end;
                     new_skyline->width = skyline->width - rects[i][0];
@@ -142,7 +144,7 @@ uint8_t skylinePacking()
         }
 
         // merge
-        struct skyline_t *ss = head->next;
+        skyline_t *ss = head->next;
         while (ss != NULL)
         {
             if (ss->width == 0)
@@ -164,12 +166,14 @@ uint8_t skylinePacking()
             ss = ss->next;
         }
     }
-    struct skyline_t *s = head->next;
+    skyline_t *s = head->next;
     while (s != NULL)
     {
         if (height < s->height)
             height = s->height;
-        s = s->next;
+        skyline_t *next = s->next;
+        free(s);
+        s = next;
     }
     printf("Enclosing rectangle: {%d, %d}\n", width, height);
 
@@ -188,21 +192,21 @@ uint8_t skylinePacking()
         // printf("Sorted by width (channels)\n");
         // printRect(rects, 6);
 
-        struct skyline_t *skyline = (struct skyline_t *)malloc(sizeof(struct skyline_t));
+        skyline_t *skyline = (skyline_t *)malloc(sizeof(skyline_t));
         skyline->start = 0;
         skyline->end = width;
         skyline->width = width;
         skyline->height = 0;
 
         skyline->next = NULL;
-        struct skyline_t *head = (struct skyline_t *)malloc(sizeof(struct skyline_t));
+        skyline_t *head = (skyline_t *)malloc(sizeof(skyline_t));
         head->next = skyline;
         // skyline->prev = head;
 
         int cnt = 0;
         while (cnt < 6)
         {
-            struct skyline_t *tmp = head->next;
+            skyline_t *tmp = head->next;
             while (skyline != NULL)
             {
                 if (skyline->height < tmp->height)
@@ -225,7 +229,7 @@ uint8_t skylinePacking()
                     if (skyline->width > rects[i][1])
                     {
                         // the remaining part
-                        struct skyline_t *new_skyline = (struct skyline_t *)malloc(sizeof(struct skyline_t));
+                        skyline_t *new_skyline = (skyline_t *)malloc(sizeof(skyline_t));
                         new_skyline->start = skyline->start + rects[i][1];
                         new_skyline->end = skyline->end;
                         new_skyline->width = skyline->width - rects[i][1];
@@ -259,7 +263,7 @@ uint8_t skylinePacking()
             }
 
             // merge
-            struct skyline_t *ss = head->next;
+            skyline_t *ss = head->next;
             while (ss != NULL)
             {
                 if (ss->width == 0)
@@ -281,12 +285,14 @@ uint8_t skylinePacking()
                 ss = ss->next;
             }
         }
-        struct skyline_t *s = head->next;
+        skyline_t *s = head->next;
         while (s != NULL)
         {
             if (height < s->height)
                 height = s->height;
-            s = s->next;
+            skyline_t *next = s->next;
+            free(s);
+            s = next;
         }
         printf("Enclosing rectangle: {%d, %d}\n", width, height);
     }
