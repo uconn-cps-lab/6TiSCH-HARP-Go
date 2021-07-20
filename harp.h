@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define MAX_CHANNEL 3
+#define MAX_CHANNEL 8
 #define MAX_CHILDREN_NUM 6
 #define MAX_HOP 5
 
@@ -28,9 +28,15 @@ typedef struct
 {
     uint8_t id;
     HARP_interface_t iface[MAX_HOP];
-    HARP_subpartition_t sp_log[MAX_HOP];
-    HARP_subpartition_t sp_phy[MAX_HOP];
+    HARP_subpartition_t sp_rel[MAX_HOP];
+    HARP_subpartition_t sp_abs[MAX_HOP];
 } HARP_child_t;
+
+typedef struct
+{
+    HARP_interface_t iface[MAX_HOP];
+    HARP_subpartition_t sp_abs[MAX_HOP];
+} HARP_self_t;
 
 typedef struct __HARP_skyline_t
 {
@@ -42,7 +48,7 @@ typedef struct __HARP_skyline_t
     struct __HARP_skyline_t *next;
 } HARP_skyline_t;
 
-HARP_child_t HARP_children[MAX_CHILDREN_NUM]; 
 uint8_t interfaceComposition();
+uint8_t subpartitionAllocation();
 
 #endif
