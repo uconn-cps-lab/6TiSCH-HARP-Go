@@ -1,4 +1,4 @@
-#include "hp.h"
+#include "harp.h"
 
 HARP_child_t HARP_children[6];
 
@@ -20,12 +20,12 @@ void initChildren()
         HARP_children[i].id = rects[i][2];
         HARP_children[i].iface[0].ts = rects[i][0];
         HARP_children[i].iface[0].ch = rects[i][1];
+        HARP_children[i].sp_log[0].ts_start = 0;
+        HARP_children[i].sp_log[0].ts_end = 0;
+        HARP_children[i].sp_log[0].ch_start = 0;
+        HARP_children[i].sp_log[0].ch_end = 0;
     }
-    // qsort(HARP_children, 6, sizeof(HARP_child_t), sortChildrenByIfaceTs);
-    // printf("first HARP_child_t's interface {ts:%d, ch:%d}\n", HARP_children[0].iface[0].ts, HARP_children[0].iface[0].ch);
-    // printf("first HARP_child_t's sub-partition {%d, %d}\n", HARP_children[0].sp_[0].ts_start,  HARP_children[0].sp_log[0].ts_end);
 }
-
 
 uint8_t width, height;
 
@@ -172,7 +172,6 @@ uint8_t skylinePacking()
             HARP_children[i].sp_log[layer].ch_end = 0;
         }
         qsort(HARP_children, 6, sizeof(HARP_child_t), sortChildrenByIfaceCh);
-
 
         HARP_skyline_t *skyline = (HARP_skyline_t *)malloc(sizeof(HARP_skyline_t));
         skyline->start = 0;
