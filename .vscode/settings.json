@@ -5,6 +5,7 @@
         "limits": "c",
         "random": "c",
         "ratio": "c",
-        "semaphore": "c"
+        "semaphore": "c",
+        "sstream": "c"
     }
 }

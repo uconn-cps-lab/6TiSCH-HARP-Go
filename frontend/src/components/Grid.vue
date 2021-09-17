@@ -107,15 +107,15 @@ export default {
   },
   data() {
     return {
-      loadTopo: true,
+      loadTopo: false,
       gwPos: [],
       sizeX: 16,
       sizeY: 16,
-      nodesNumber: 65, // include gateway
+      nodesNumber: 50, // include gateway
       maxHop: 5,
       txRange: 9, // in square
       childrenCnt: {0:0},
-      parent_capacity:4, // except gateway
+      parent_capacity:3, // except gateway
       kicked: [],
       history_cp: [],
       history_cl: [],
@@ -166,7 +166,8 @@ export default {
         },
         series: [
           {
-            symbolSize: 16,
+            type: "scatter",
+            symbolSize: 15,
             itemStyle: {
               color: "deepskyblue",
             },
@@ -176,7 +177,7 @@ export default {
             label: {
               show: true,
               color: "black",
-              fontSize: 12,
+              fontSize: 10,
               formatter: (item) => {
                 for (var i = 0; i < Object.keys(this.nodes).length; i++) {
                   if (
@@ -200,7 +201,6 @@ export default {
               },
               data: [],
             },
-            type: "scatter",
           },
           {
             type: "scatter",

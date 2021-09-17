@@ -24,24 +24,11 @@ func runHTTPServer() {
 	// app.USE(middlewares.Logger(os.Stdout, middlewares.DefaultSkipper))
 	app.USE(middlewares.CORS(middlewares.CORSOpt{}))
 
-	app.GET("/", home)
-	app.GET("/static/*files", static)
 	app.POST("/api/topo", postTopo)
 	app.GET("/api/nodes", getNodes)
 	app.GET("/api/node/:id", adjustInterface)
 	app.GET("/api/ws", ws)
 	app.Run(":8888")
-}
-
-func home(ctx *sweetygo.Context) error {
-	return ctx.Render(200, "index")
-}
-
-func static(ctx *sweetygo.Context) error {
-	staticHandle := http.StripPrefix("/static",
-		http.FileServer(http.Dir("./static")))
-	staticHandle.ServeHTTP(ctx.Resp, ctx.Req)
-	return nil
 }
 
 type topoData struct {
