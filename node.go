@@ -278,26 +278,26 @@ func (n *Node) compositionFeasibilityTest(layer int) (bool, []int) {
 }
 
 // adapt original sub-partition layout to a feasible solution
-// 1. Remove the changed node's sub-partition in the original layout, and find all new available rectangular areas, try if can fit in any of them.
+// 1. Remove the changed node's sub-partition in the original layout, and find all idle rectangular areas, try if can fit in any of them.
 // 2. Remove a neighbor with smallest weight, and repeat step 1.
 func (n *Node) adaptSubpartition(layer int) {
-	// backup
-	childrenRelSpBackup := make(map[int][]int)
-	for k, v := range n.Children {
-		childrenRelSpBackup[k] = v.SubPartitionRel[layer]
-	}
+	var relocatedNodes = []int{}
+	relocatedNodes = append(relocatedNodes, n.AdjustingNode)
 
+	// find idle rectangular areas
 	for _, c := range n.Children {
-		if c.ID == n.AdjustingNode {
+		var skip = false
+		for _, r := range relocatedNodes {
+			if c.ID == r {
+				skip = true
+			}
+		}
+		if skip {
 			continue
 		}
 
 	}
 
-	// recover
-	for k, v := range childrenRelSpBackup {
-		n.Children[k].SubPartitionRel[layer] = v
-	}
 }
 
 func (n *Node) packingGreedyChannel(layer int) {
@@ -663,14 +663,14 @@ func (n *Node) packingBestFitSkyline(layer int) {
 // map logical sub-partition offset to physcial sub-partition locations
 func (n *Node) allocateSubpartition() {
 	if n.ID == 0 {
-		var redundant = 0
+		var gap = 1
 		var slotIdx = 0
 		for l := MaxLayer; l > 0; l-- {
 			if n.Interface[l] == nil {
 				continue
 			}
-			n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + redundant + n.Interface[l][0], 1, MAX_CHANNEL + 1}
-			slotIdx += redundant + n.Interface[l][0]
+			n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + n.Interface[l][0], MAX_CHANNEL + 1 - n.Interface[l][1], MAX_CHANNEL + 1}
+			slotIdx += gap + n.Interface[l][0]
 		}
 	}
 
