@@ -8,13 +8,15 @@ import (
 )
 
 type Node struct {
-	ID              int            `json:"id"`
-	Parent          int            `json:"parent"`
-	Children        map[int]*Child `json:"-"`
-	Layer           int            `json:"layer"`        // equals to hop count
-	Traffic         int            `json:"-"`            // local traffic of each node is 1
-	Interface       map[int][]int  `json:"interface"`    // resource interface [slots, channels]
-	SubPartitionAbs map[int][]int  `json:"subpartition"` // allocated sub-partition [slots start&end, channels start&end]
+	ID              int           `json:"id"`
+	Parent          int           `json:"parent"`
+	Children        map[int]Child `json:"-"`
+	Layer           int           `json:"layer"`        // equals to hop count
+	Traffic         int           `json:"-"`            // local traffic of each node is 1
+	Interface       map[int][]int `json:"interface"`    // resource interface [slots, channels]
+	SubPartitionAbs map[int][]int `json:"subpartition"` // allocated sub-partition [slots start&end, channels start&end]
+
+	AdjustingNode int // the child that sent sp_adj_req
 
 	receivedInterfaceCnt int
 
@@ -27,6 +29,11 @@ type Node struct {
 	RXCh   chan Msg    `json:"-"`
 	Logger *log.Logger `json:"-"`
 }
+type AdjustingNode struct {
+	ID           int
+	OldInterface map[int][]int
+	NewInterface map[int][]int
+}
 
 func NewNode(id, parent, layer int) *Node {
 	var traffic = 1
@@ -36,7 +43,7 @@ func NewNode(id, parent, layer int) *Node {
 	node := &Node{
 		ID:                            id,
 		Parent:                        parent,
-		Children:                      make(map[int]*Child),
+		Children:                      make(map[int]Child),
 		Layer:                         layer,
 		Traffic:                       traffic,
 		Interface:                     make(map[int][]int),
@@ -59,8 +66,8 @@ type Child struct {
 	SubPartitionAbs map[int][]int // output of sub-partition allocation, physical location
 }
 
-func NewChild(id, traffic int) *Child {
-	return &Child{
+func NewChild(id, traffic int) Child {
+	return Child{
 		ID:              id,
 		Traffic:         traffic,
 		Interface:       make(map[int][]int),
@@ -140,8 +147,14 @@ func (n *Node) sendTo(dst, msgType int, payload interface{}) {
 }
 
 func (n *Node) interfaceMsgHandler(msg Msg) {
-	// n.Logger.Println("received interface from", msg.Src, msg.Payload)
-	n.Children[msg.Src].Interface = msg.Payload.(map[int][]int)
+	// n.Logger.Println("received interface from", msg.Src, msg.Payload.(map[int][]int))
+	// n.Children[msg.Src].Interface = msg.Payload.(map[int][]int)
+	for k, v := range msg.Payload.(map[int][]int) {
+		n.Children[msg.Src].Interface[k] = v
+		if n.ID == 0 && msg.Src == 30 && k == 3 {
+			n.Children[msg.Src].Interface[k] = []int{1, 5}
+		}
+	}
 	n.receivedInterfaceCnt++
 
 	if n.receivedInterfaceCnt == len(n.Children) {
@@ -158,25 +171,33 @@ func (n *Node) subpartitionMsgHandler(msg Msg) {
 func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
 	layer := msg.Payload.([]int)[0]
 	// n.Logger.Printf("received SP_ADJ_REQ @ L%d from #%d", layer, msg.Src)
-	// wsLogger <- fmt.Sprintf("#%d received SP_ADJ_REQ @ L%d from #%d", n.ID, layer, msg.Src)
+	// wsLogger <- wsLog{
+	// 	WS_LOG_MSG,
+	// 	fmt.Sprintf("#%d received SP_ADJ_REQ @ L%d from #%d", n.ID, layer, msg.Src),
+	// 	nil,
+	// }
+	n.AdjustingNode = msg.Src
+
 	n.Children[msg.Src].Interface[layer] = msg.Payload.([]int)[1:]
 
-	n.compositeInterface(layer)
-	// n.Logger.Printf("recomputes IF composition and SPs arrangement @ L%d\n", layer)
-	// wsLogger <- fmt.Sprintf("#%d recomputes IF composition and SPs arrangement @ L%d", n.ID, layer)
+	// fesibility test
+	feasbility, newIface := n.compositionFeasibilityTest(layer)
+	if feasbility != true {
+		n.Logger.Printf("SP @ L%d cannot handle, multi-hop adjustment, new iface: %v send SP_ADJ_REQ to #%d\n", layer, newIface, n.Parent)
 
-	if n.Interface[layer][0] > n.SubPartitionAbs[layer][1]-n.SubPartitionAbs[layer][0] ||
-		n.Interface[layer][1] > n.SubPartitionAbs[layer][3]-n.SubPartitionAbs[layer][2] {
-		n.sendTo(n.Parent, MSG_IF_UPDATE, append([]int{layer}, n.Interface[layer]...))
+		n.sendTo(n.Parent, MSG_IF_UPDATE, append([]int{layer}, newIface...))
 		adjMsgCnt++
-		n.Logger.Printf("SP @ L%d cannot handle, send SP_ADJ_REQ to #%d\n", layer, n.Parent)
 		wsLogger <- wsLog{
 			WS_LOG_MSG,
 			fmt.Sprintf("%d) #%d SP @ L%d cannot handle, send SP_ADJ_REQ to #%d", adjMsgCnt, n.ID, layer, n.Parent),
 			nil,
 		}
+
 	} else {
+		fmt.Println("one hop adjustment")
+		n.adaptSubpartition(layer)
 		n.adjustSubpartition(layer)
+
 	}
 }
 
@@ -226,13 +247,65 @@ func (n *Node) compositeInterface(layer int) {
 	}
 }
 
-func (n *Node) packingGreedyChannel(layer int) {
+// whether can finish the adjustment in one hop, if not, return the new intereface
+func (n *Node) compositionFeasibilityTest(layer int) (bool, []int) {
+	res := true
+	newIface := []int{0, 0}
 
+	// backup
+	childrenRelSpBackup := make(map[int][]int)
+	for k, v := range n.Children {
+		childrenRelSpBackup[k] = v.SubPartitionRel[layer]
+	}
+
+	// fmt.Println(n.Children[26].SubPartitionRel[3])
+	n.packingBestFitSkyline(layer)
+	// fmt.Println(n.Children[26].SubPartitionRel[3])
+	// exceed allocated sub-partition
+	if n.Interface[layer][0] > n.SubPartitionAbs[layer][1]-n.SubPartitionAbs[layer][0] ||
+		n.Interface[layer][1] > n.SubPartitionAbs[layer][3]-n.SubPartitionAbs[layer][2] {
+		res = false
+		newIface = n.Interface[layer]
+	}
+
+	// recover
+	for k, v := range childrenRelSpBackup {
+		n.Children[k].SubPartitionRel[layer] = v
+	}
+
+	// fmt.Println(n.Children[26].SubPartitionRel[3])
+	return res, newIface
+}
+
+// adapt original sub-partition layout to a feasible solution
+// 1. Remove the changed node's sub-partition in the original layout, and find all new available rectangular areas, try if can fit in any of them.
+// 2. Remove a neighbor with smallest weight, and repeat step 1.
+func (n *Node) adaptSubpartition(layer int) {
+	// backup
+	childrenRelSpBackup := make(map[int][]int)
+	for k, v := range n.Children {
+		childrenRelSpBackup[k] = v.SubPartitionRel[layer]
+	}
+
+	for _, c := range n.Children {
+		if c.ID == n.AdjustingNode {
+			continue
+		}
+
+	}
+
+	// recover
+	for k, v := range childrenRelSpBackup {
+		n.Children[k].SubPartitionRel[layer] = v
+	}
+}
+
+func (n *Node) packingGreedyChannel(layer int) {
 	var slots = 0
 	var channels = 0
 
 	// sort children by slot range, decreasing
-	var childrenSlice = []*Child{}
+	var childrenSlice = []Child{}
 	for _, c := range n.Children {
 		if c.Interface[layer] != nil {
 			if c.Interface[layer][0] != 0 {
@@ -260,7 +333,6 @@ func (n *Node) packingGreedyChannel(layer int) {
 		return
 	}
 	n.Interface[layer] = []int{slots, channels}
-
 }
 
 // for level based strip packing methods
@@ -275,12 +347,11 @@ type level struct {
 // First-Fit Decreasing Height for strip packing, with level concept
 // Coffman, Jr, Edward G., et al. "Performance bounds for level-oriented two-dimensional packing algorithms." SIAM Journal on Computing 9.4 (1980): 808-826.
 func (n *Node) packingFFDH(layer int) {
-
 	var slots = 0
 	var channels = 0
 
 	// sort children by slot range, decreasing
-	var childrenSlice = []*Child{}
+	var childrenSlice = []Child{}
 	for _, c := range n.Children {
 		if c.Interface[layer] != nil {
 			if c.Interface[layer][0] != 0 {
@@ -352,7 +423,6 @@ func (n *Node) packingFFDH(layer int) {
 		}
 	}
 	n.Interface[layer] = []int{slots, channels}
-
 }
 
 type skyline struct {
@@ -371,7 +441,7 @@ func (n *Node) packingBestFitSkyline(layer int) {
 	var channels = 0
 
 	// sort children by slot range, decreasing
-	var childrenSlice = []*Child{}
+	var childrenSlice = []Child{}
 	for _, c := range n.Children {
 		if c.Interface[layer] != nil {
 			if c.Interface[layer][0] != 0 {
@@ -484,7 +554,7 @@ func (n *Node) packingBestFitSkyline(layer int) {
 		slots = 0
 		channels = MAX_CHANNEL
 
-		childrenSlice = []*Child{}
+		childrenSlice = []Child{}
 		for _, c := range n.Children {
 			if c.Interface[layer] != nil {
 				// reset subpartition offset
@@ -588,13 +658,12 @@ func (n *Node) packingBestFitSkyline(layer int) {
 	}
 
 	n.Interface[layer] = []int{slots, channels}
-
 }
 
 // map logical sub-partition offset to physcial sub-partition locations
 func (n *Node) allocateSubpartition() {
 	if n.ID == 0 {
-		var redundant = 2
+		var redundant = 0
 		var slotIdx = 0
 		for l := MaxLayer; l > 0; l-- {
 			if n.Interface[l] == nil {
@@ -650,11 +719,7 @@ func (n *Node) updateInterface(layer int, newIF []int) {
 	}
 }
 
-// called in adjustment phase, objective is to minimize changes
-func (n *Node) reCompositeInterface(layer int) {
-
-}
-
+// Check if children's sub-partition changed, send SP_Update
 func (n *Node) adjustSubpartition(layer int) {
 	for _, c := range n.Children {
 		if c.Interface[layer] != nil && c.SubPartitionRel[layer] != nil && c.SubPartitionAbs[layer] != nil {
