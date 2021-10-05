@@ -93,8 +93,8 @@ import "echarts/lib/chart/scatter";
 import "echarts/lib/chart/effectScatter";
 import "echarts/lib/component/markLine";
 import "echarts/lib/component/toolbox";
-// import nodes from "./nodes101.json";
-import nodes from "./nodes65-4hop2.json";
+
+import nodes from "./nodes64.json";
 // import noiseList from "./noiseList.json";
 
 
@@ -107,11 +107,11 @@ export default {
   },
   data() {
     return {
-      loadTopo: false,
+      loadTopo: true,
       gwPos: [],
       sizeX: 16,
       sizeY: 16,
-      nodesNumber: 50, // include gateway
+      nodesNumber: 64, // include gateway
       maxHop: 5,
       txRange: 9, // in square
       childrenCnt: {0:0},
