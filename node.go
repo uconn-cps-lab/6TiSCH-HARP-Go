@@ -76,6 +76,15 @@ func NewChild(id, traffic int) Child {
 	}
 }
 
+type skyline struct {
+	start  int
+	end    int
+	width  int
+	height int
+	prev   *skyline
+	next   *skyline
+}
+
 func (n *Node) Run(blocker chan bool) {
 	defer func() {
 		<-blocker
@@ -151,9 +160,9 @@ func (n *Node) interfaceMsgHandler(msg Msg) {
 	// n.Children[msg.Src].Interface = msg.Payload.(map[int][]int)
 	for k, v := range msg.Payload.(map[int][]int) {
 		n.Children[msg.Src].Interface[k] = v
-		if n.ID == 0 && msg.Src == 30 && k == 3 {
-			n.Children[msg.Src].Interface[k] = []int{1, 5}
-		}
+		// if n.ID == 0 && msg.Src == 14 && k == 3 {
+		// 	n.Children[msg.Src].Interface[k] = []int{2, 1}
+		// }
 	}
 	n.receivedInterfaceCnt++
 
@@ -284,20 +293,79 @@ func (n *Node) adaptSubpartition(layer int) {
 	var relocatedNodes = []int{}
 	relocatedNodes = append(relocatedNodes, n.AdjustingNode)
 
-	// find idle rectangular areas
+	// fixed nodes' relative subpartition at this layer
+	fixedNodesRelSp := [][]int{}
 	for _, c := range n.Children {
 		var skip = false
 		for _, r := range relocatedNodes {
-			if c.ID == r {
+			if c.ID == r || c.SubPartitionRel[layer] == nil {
 				skip = true
+				break
 			}
 		}
 		if skip {
 			continue
 		}
-
+		fixedNodesRelSp = append(fixedNodesRelSp, c.SubPartitionRel[layer])
 	}
 
+	// find idle rectangular areas
+	rectangluarArea := [][]int{}
+
+	// bitmap version
+	bitmap := [8]uint16{}
+	for _, sp := range fixedNodesRelSp {
+		for y := sp[2]; y < sp[3]; y++ {
+			for x := sp[0]; x < sp[1]; x++ {
+				bitmap[y] |= 0x8000 >> x
+			}
+		}
+	}
+	for i := len(bitmap) - 1; i >= 0; i-- {
+		fmt.Printf("%016b\n", bitmap[i])
+	}
+
+	for yCur := 0; yCur < n.Interface[layer][1]; yCur++ {
+		for xCur := 0; xCur < n.Interface[layer][0]; xCur++ {
+			if bitmap[yCur]<<uint16(xCur)&0x8000 == 0 {
+				// endPoints = append(endPoints, []int{xCur, yCur})
+				xStart := xCur
+				xEnd := xCur
+				yStart := yCur
+				yEnd := yCur
+				for yy := yCur; yy < n.Interface[layer][1]; yy++ {
+					if bitmap[yy]<<uint16(xCur)&0x8000 != 0 {
+						yEnd = yy
+						break
+					}
+					if yy == n.Interface[layer][1]-1 {
+						xEnd = yy + 1
+					}
+				}
+				for xx := xCur; xx < n.Interface[layer][0]; xx++ {
+					if bitmap[yCur]<<uint16(xx)&0x8000 != 0 {
+						xEnd = xx
+						break
+					}
+					if xx == n.Interface[layer][0]-1 {
+						xEnd = xx + 1
+					}
+				}
+				duplicated := false
+				for _, rect := range rectangluarArea {
+					if xStart >= rect[0] && xEnd <= rect[1] && yStart >= rect[2] && yEnd <= rect[3] {
+						duplicated = true
+						break
+					}
+				}
+				if !duplicated {
+					rectangluarArea = append(rectangluarArea, []int{xStart, xEnd, yStart, yEnd})
+				}
+			}
+		}
+	}
+
+	fmt.Println(rectangluarArea)
 }
 
 func (n *Node) packingGreedyChannel(layer int) {
@@ -425,15 +493,6 @@ func (n *Node) packingFFDH(layer int) {
 	n.Interface[layer] = []int{slots, channels}
 }
 
-type skyline struct {
-	start  int
-	end    int
-	width  int
-	height int
-	prev   *skyline
-	next   *skyline
-}
-
 // Best-Fit skyline strip packing
 // Burke, Edmund K., Graham Kendall, and Glenn Whitwell. "A new placement heuristic for the orthogonal stock-cutting problem." Operations Research 52.4 (2004): 655-671.
 func (n *Node) packingBestFitSkyline(layer int) {
@@ -499,7 +558,7 @@ func (n *Node) packingBestFitSkyline(layer int) {
 				childrenSlice = append(childrenSlice[:j], childrenSlice[j+1:]...)
 
 				// create a new skyline, remaining part
-				if s.width >= c.Interface[layer][0] {
+				if s.width > c.Interface[layer][0] {
 					newS := &skyline{
 						start:  s.start + c.Interface[layer][0],
 						end:    s.end,
@@ -669,7 +728,8 @@ func (n *Node) allocateSubpartition() {
 			if n.Interface[l] == nil {
 				continue
 			}
-			n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + n.Interface[l][0], MAX_CHANNEL + 1 - n.Interface[l][1], MAX_CHANNEL + 1}
+			// n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + n.Interface[l][0], MAX_CHANNEL + 1 - n.Interface[l][1], MAX_CHANNEL + 1}
+			n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + n.Interface[l][0], 1, MAX_CHANNEL + 1}
 			slotIdx += gap + n.Interface[l][0]
 		}
 	}
