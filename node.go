@@ -16,7 +16,7 @@ type Node struct {
 	Interface       map[int][]int `json:"interface"`    // resource interface [slots, channels]
 	SubPartitionAbs map[int][]int `json:"subpartition"` // allocated sub-partition [slots start&end, channels start&end]
 
-	AdjustingNode int // the child that sent sp_adj_req
+	AdjustingNodes []int
 
 	receivedInterfaceCnt int
 
@@ -185,7 +185,7 @@ func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
 	// 	fmt.Sprintf("#%d received SP_ADJ_REQ @ L%d from #%d", n.ID, layer, msg.Src),
 	// 	nil,
 	// }
-	n.AdjustingNode = msg.Src
+	n.AdjustingNodes = []int{msg.Src}
 
 	n.Children[msg.Src].Interface[layer] = msg.Payload.([]int)[1:]
 
@@ -290,14 +290,32 @@ func (n *Node) compositionFeasibilityTest(layer int) (bool, []int) {
 // 1. Remove the changed node's sub-partition in the original layout, and find all idle rectangular areas, try if can fit in any of them.
 // 2. Remove a neighbor with smallest weight, and repeat step 1.
 func (n *Node) adaptSubpartition(layer int) {
-	var relocatedNodes = []int{}
-	relocatedNodes = append(relocatedNodes, n.AdjustingNode)
+	rectangluarArea := n.findIdleRectangluarArea(layer)
+	fmt.Println(rectangluarArea)
+	for _, adjNode := range n.AdjustingNodes {
+		fmt.Println(n.Children[adjNode].Interface[layer])
+		for _, rect := range rectangluarArea {
+			if rect[1]-rect[0] >= n.Children[adjNode].Interface[layer][0] &&
+				rect[3]-rect[2] >= n.Children[adjNode].Interface[layer][1] {
+				fmt.Printf("found a rectangle %v to place #%d's iface@l%d: %v\n",
+					rect, adjNode, layer, n.Children[adjNode].Interface[layer])
+				n.Children[adjNode].SubPartitionRel[layer] = []int{rect[0], rect[0] + n.Children[adjNode].Interface[layer][0],
+					rect[2], rect[2] + n.Children[adjNode].Interface[layer][1]}
+
+				break
+			}
+		}
+	}
+}
+
+func (n *Node) findIdleRectangluarArea(layer int) [][]int {
+	rectangluarArea := [][]int{}
 
 	// fixed nodes' relative subpartition at this layer
 	fixedNodesRelSp := [][]int{}
 	for _, c := range n.Children {
 		var skip = false
-		for _, r := range relocatedNodes {
+		for _, r := range n.AdjustingNodes {
 			if c.ID == r || c.SubPartitionRel[layer] == nil {
 				skip = true
 				break
@@ -309,41 +327,38 @@ func (n *Node) adaptSubpartition(layer int) {
 		fixedNodesRelSp = append(fixedNodesRelSp, c.SubPartitionRel[layer])
 	}
 
-	// find idle rectangular areas
-	rectangluarArea := [][]int{}
-
 	// bitmap version
-	bitmap := [8]uint16{}
+	bitmap := [15]uint32{}
 	for _, sp := range fixedNodesRelSp {
 		for y := sp[2]; y < sp[3]; y++ {
 			for x := sp[0]; x < sp[1]; x++ {
-				bitmap[y] |= 0x8000 >> x
+				bitmap[y] |= 0x80000000 >> x
 			}
 		}
 	}
 	for i := len(bitmap) - 1; i >= 0; i-- {
-		fmt.Printf("%016b\n", bitmap[i])
+		fmt.Printf("%032b\n", bitmap[i])
 	}
 
 	for yCur := 0; yCur < n.Interface[layer][1]; yCur++ {
 		for xCur := 0; xCur < n.Interface[layer][0]; xCur++ {
-			if bitmap[yCur]<<uint16(xCur)&0x8000 == 0 {
+			if bitmap[yCur]<<xCur&0x80000000 == 0 {
 				// endPoints = append(endPoints, []int{xCur, yCur})
 				xStart := xCur
 				xEnd := xCur
 				yStart := yCur
 				yEnd := yCur
 				for yy := yCur; yy < n.Interface[layer][1]; yy++ {
-					if bitmap[yy]<<uint16(xCur)&0x8000 != 0 {
+					if bitmap[yy]<<xCur&0x80000000 != 0 {
 						yEnd = yy
 						break
 					}
 					if yy == n.Interface[layer][1]-1 {
-						xEnd = yy + 1
+						yEnd = yy + 1
 					}
 				}
 				for xx := xCur; xx < n.Interface[layer][0]; xx++ {
-					if bitmap[yCur]<<uint16(xx)&0x8000 != 0 {
+					if bitmap[yCur]<<xx&0x80000000 != 0 {
 						xEnd = xx
 						break
 					}
@@ -364,8 +379,7 @@ func (n *Node) adaptSubpartition(layer int) {
 			}
 		}
 	}
-
-	fmt.Println(rectangluarArea)
+	return rectangluarArea
 }
 
 func (n *Node) packingGreedyChannel(layer int) {
