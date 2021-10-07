@@ -204,7 +204,13 @@ func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
 
 	} else {
 		fmt.Println("one hop adjustment")
-		n.adaptSubpartition(layer)
+		i := 0
+		// for len(n.AdjustingNodes) > 0 {
+		for i < 10 {
+			fmt.Println(n.AdjustingNodes)
+			n.adaptSubpartition(layer)
+			i++
+		}
 		n.adjustSubpartition(layer)
 
 	}
@@ -215,7 +221,9 @@ func (n *Node) subpartitionUpdateMsgHandler(msg Msg) {
 	// n.Logger.Printf("received SP_UPDATE @ L%d from #%d", layer, msg.Src)
 	// wsLogger <- fmt.Sprintf("#%d received SP_UPDATE @ L%d from #%d", n.ID, layer, msg.Src)
 	n.SubPartitionAbs[layer] = msg.Payload.([]int)[1:]
-
+	if len(n.AdjustingNodes) > 0 {
+		n.adaptSubpartition(layer)
+	}
 	n.adjustSubpartition(layer)
 }
 
@@ -290,26 +298,80 @@ func (n *Node) compositionFeasibilityTest(layer int) (bool, []int) {
 // 1. Remove the changed node's sub-partition in the original layout, and find all idle rectangular areas, try if can fit in any of them.
 // 2. Remove a neighbor with smallest weight, and repeat step 1.
 func (n *Node) adaptSubpartition(layer int) {
-	rectangluarArea := n.findIdleRectangluarArea(layer)
-	fmt.Println(rectangluarArea)
-	for _, adjNode := range n.AdjustingNodes {
-		fmt.Println(n.Children[adjNode].Interface[layer])
-		for _, rect := range rectangluarArea {
-			if rect[1]-rect[0] >= n.Children[adjNode].Interface[layer][0] &&
-				rect[3]-rect[2] >= n.Children[adjNode].Interface[layer][1] {
-				fmt.Printf("found a rectangle %v to place #%d's iface@l%d: %v\n",
-					rect, adjNode, layer, n.Children[adjNode].Interface[layer])
-				n.Children[adjNode].SubPartitionRel[layer] = []int{rect[0], rect[0] + n.Children[adjNode].Interface[layer][0],
-					rect[2], rect[2] + n.Children[adjNode].Interface[layer][1]}
+	if len(n.AdjustingNodes) == 0 {
+		return
+	}
+	adjNode := n.AdjustingNodes[0]
 
-				break
+	idleRectangles := n.findIdleRectangles(layer)
+	fmt.Println(idleRectangles)
+
+	found := false
+
+	fmt.Println(n.Children[adjNode].Interface[layer])
+	for _, rect := range idleRectangles {
+		if rect[1]-rect[0] >= n.Children[adjNode].Interface[layer][0] &&
+			rect[3]-rect[2] >= n.Children[adjNode].Interface[layer][1] {
+			fmt.Printf("found a rectangle %v to place #%d's iface@l%d: %v\n",
+				rect, adjNode, layer, n.Children[adjNode].Interface[layer])
+			n.Children[adjNode].SubPartitionRel[layer] = []int{rect[0], rect[0] + n.Children[adjNode].Interface[layer][0],
+				rect[2], rect[2] + n.Children[adjNode].Interface[layer][1]}
+			found = true
+			n.AdjustingNodes = append(n.AdjustingNodes[:0], n.AdjustingNodes[1:]...)
+			return
+		}
+	}
+
+	if !found {
+		fmt.Println("need to relocate a neighbor first")
+
+		childrenSlice := []Child{}
+		for _, c := range n.Children {
+			var skip = false
+			for _, nn := range n.AdjustingNodes {
+				if c.ID == nn || c.SubPartitionRel[layer] == nil {
+					skip = true
+					break
+				}
+			}
+			if skip {
+				continue
+			}
+			childrenSlice = append(childrenSlice, c)
+		}
+		sort.SliceStable(childrenSlice, func(i, j int) bool {
+			if childrenSlice[i].Interface[layer][0] == childrenSlice[j].Interface[layer][0] {
+				return childrenSlice[i].Interface[layer][1] < childrenSlice[j].Interface[layer][1]
+			}
+			return childrenSlice[i].Interface[layer][0] < childrenSlice[j].Interface[layer][0]
+		})
+
+		for _, c := range childrenSlice {
+			fmt.Println(c.ID, c.Interface[layer])
+			n.AdjustingNodes = append(n.AdjustingNodes, c.ID)
+			idleRectangles = n.findIdleRectangles(layer)
+
+			for _, rect := range idleRectangles {
+				if rect[1]-rect[0] >= n.Children[adjNode].Interface[layer][0] &&
+					rect[3]-rect[2] >= n.Children[adjNode].Interface[layer][1] {
+					fmt.Printf("found a rectangle %v to place #%d's iface@l%d: %v\n",
+						rect, adjNode, layer, n.Children[adjNode].Interface[layer])
+					n.Children[adjNode].SubPartitionRel[layer] = []int{rect[0], rect[0] + n.Children[adjNode].Interface[layer][0],
+						rect[2], rect[2] + n.Children[adjNode].Interface[layer][1]}
+					found = true
+					n.AdjustingNodes = append(n.AdjustingNodes[:0], n.AdjustingNodes[1:]...)
+					n.AdjustingNodes = append(n.AdjustingNodes, c.ID)
+					return
+				}
 			}
 		}
+
 	}
 }
 
-func (n *Node) findIdleRectangluarArea(layer int) [][]int {
-	rectangluarArea := [][]int{}
+// return idle rectangles and fixed nodes' sub-partition
+func (n *Node) findIdleRectangles(layer int) [][]int {
+	idleRectangles := [][]int{}
 
 	// fixed nodes' relative subpartition at this layer
 	fixedNodesRelSp := [][]int{}
@@ -336,9 +398,9 @@ func (n *Node) findIdleRectangluarArea(layer int) [][]int {
 			}
 		}
 	}
-	for i := len(bitmap) - 1; i >= 0; i-- {
-		fmt.Printf("%032b\n", bitmap[i])
-	}
+	// for i := len(bitmap) - 1; i >= 0; i-- {
+	// 	fmt.Printf("%032b\n", bitmap[i])
+	// }
 
 	for yCur := 0; yCur < n.Interface[layer][1]; yCur++ {
 		for xCur := 0; xCur < n.Interface[layer][0]; xCur++ {
@@ -367,19 +429,19 @@ func (n *Node) findIdleRectangluarArea(layer int) [][]int {
 					}
 				}
 				duplicated := false
-				for _, rect := range rectangluarArea {
+				for _, rect := range idleRectangles {
 					if xStart >= rect[0] && xEnd <= rect[1] && yStart >= rect[2] && yEnd <= rect[3] {
 						duplicated = true
 						break
 					}
 				}
 				if !duplicated {
-					rectangluarArea = append(rectangluarArea, []int{xStart, xEnd, yStart, yEnd})
+					idleRectangles = append(idleRectangles, []int{xStart, xEnd, yStart, yEnd})
 				}
 			}
 		}
 	}
-	return rectangluarArea
+	return idleRectangles
 }
 
 func (n *Node) packingGreedyChannel(layer int) {

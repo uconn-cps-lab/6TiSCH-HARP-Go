@@ -94,9 +94,9 @@ export default {
       seq:[],
       hp_res:{},
       
-      adjustedNode: 26,
+      adjustedNode: 11,
       adjustedLayer: 3,
-      adjustedInterface:"6,1",
+      adjustedInterface:"6,2",
 
       option: {
         toolbox:{
