@@ -191,7 +191,7 @@ func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
 
 	// fesibility test
 	feasbility, newIface := n.compositionFeasibilityTest(layer)
-	if feasbility != true {
+	if !feasbility {
 		n.Logger.Printf("SP @ L%d cannot handle, multi-hop adjustment, new iface: %v send SP_ADJ_REQ to #%d\n", layer, newIface, n.Parent)
 
 		n.sendTo(n.Parent, MSG_IF_UPDATE, append([]int{layer}, newIface...))
@@ -206,8 +206,6 @@ func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
 		fmt.Println("one hop adjustment")
 		i := 0
 		for len(n.AdjustingNodes) > 0 {
-			// for i < 10 {
-			fmt.Println(n.AdjustingNodes)
 			n.adaptSubpartition(layer)
 			i++
 		}
@@ -304,11 +302,9 @@ func (n *Node) adaptSubpartition(layer int) {
 	adjNode := n.AdjustingNodes[0]
 
 	idleRectangles := n.findIdleRectangles(layer)
-	fmt.Println(idleRectangles)
 
 	found := false
 
-	fmt.Println(n.Children[adjNode].Interface[layer])
 	for _, rect := range idleRectangles {
 		if rect[1]-rect[0] >= n.Children[adjNode].Interface[layer][0] &&
 			rect[3]-rect[2] >= n.Children[adjNode].Interface[layer][1] {
@@ -347,7 +343,6 @@ func (n *Node) adaptSubpartition(layer int) {
 		})
 
 		for _, c := range childrenSlice {
-			fmt.Println(c.ID, c.Interface[layer])
 			n.AdjustingNodes = append(n.AdjustingNodes, c.ID)
 			idleRectangles = n.findIdleRectangles(layer)
 
@@ -729,14 +724,8 @@ func (n *Node) packingBestFitSkyline(layer int) {
 
 			var hasFit bool
 			for j, c := range childrenSlice {
-				if n.ID == 0 && layer == 4 {
-					fmt.Println(c.ID)
-				}
 				if s.width >= c.Interface[layer][1] {
 					hasFit = true
-					if n.ID == 0 && layer == 4 {
-						fmt.Println("place", c.ID)
-					}
 					c.SubPartitionRel[layer] = []int{s.height, s.height + c.Interface[layer][0], s.start, s.start + c.Interface[layer][1]}
 					childrenSlice = append(childrenSlice[:j], childrenSlice[j+1:]...)
 
@@ -857,6 +846,7 @@ func (n *Node) updateInterface(layer int, newIF []int) {
 
 // Check if children's sub-partition changed, send SP_Update
 func (n *Node) adjustSubpartition(layer int) {
+	relocatedCnt := 0
 	for _, c := range n.Children {
 		if c.Interface[layer] != nil && c.SubPartitionRel[layer] != nil && c.SubPartitionAbs[layer] != nil {
 			newSubpartition := []int{
@@ -870,6 +860,7 @@ func (n *Node) adjustSubpartition(layer int) {
 				c.SubPartitionAbs[layer][2] != newSubpartition[2] ||
 				c.SubPartitionAbs[layer][3] != newSubpartition[3] {
 				c.SubPartitionAbs[layer] = newSubpartition
+				relocatedCnt++
 				mutex.Lock()
 				adjMsgCnt++
 				mutex.Unlock()
@@ -882,5 +873,8 @@ func (n *Node) adjustSubpartition(layer int) {
 				n.sendTo(c.ID, MSG_SP_UPDATE, append([]int{layer}, c.SubPartitionAbs[layer]...))
 			}
 		}
+	}
+	if relocatedCnt > 0 {
+		n.Logger.Println("total relocated sub-partitions:", relocatedCnt)
 	}
 }
