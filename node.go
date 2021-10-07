@@ -205,8 +205,8 @@ func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
 	} else {
 		fmt.Println("one hop adjustment")
 		i := 0
-		// for len(n.AdjustingNodes) > 0 {
-		for i < 10 {
+		for len(n.AdjustingNodes) > 0 {
+			// for i < 10 {
 			fmt.Println(n.AdjustingNodes)
 			n.adaptSubpartition(layer)
 			i++

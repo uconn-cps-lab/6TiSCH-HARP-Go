@@ -348,6 +348,7 @@ export default {
         for(var i in this.hp_res) {
           var node = this.hp_res[i]
           if(node.layer != this.layer) continue
+          // if( node.id==30) continue
 
           for(var l in node.subpartition) {
             var name = node.id.toString()
