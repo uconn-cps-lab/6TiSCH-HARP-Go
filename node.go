@@ -299,8 +299,12 @@ func (n *Node) adaptSubpartition(layer int) {
 	if len(n.AdjustingNodes) == 0 {
 		return
 	}
-	adjNode := n.AdjustingNodes[0]
 
+	sort.SliceStable(n.AdjustingNodes, func(i, j int) bool {
+		return n.Children[n.AdjustingNodes[i]].Interface[layer][0] > n.Children[n.AdjustingNodes[j]].Interface[layer][0]
+	})
+	fmt.Println("adjusting", n.AdjustingNodes)
+	adjNode := n.AdjustingNodes[0]
 	idleRectangles := n.findIdleRectangles(layer)
 	// fmt.Println(idleRectangles)
 	found := false
@@ -883,6 +887,6 @@ func (n *Node) adjustSubpartition(layer int) {
 		}
 	}
 	if relocatedCnt > 0 {
-		n.Logger.Println("total relocated sub-partitions:", relocatedCnt)
+		// n.Logger.Println("total relocated sub-partitions:", relocatedCnt)
 	}
 }
