@@ -204,10 +204,10 @@ func (n *Node) interfaceUpdateMsgHandler(msg Msg) {
 
 	} else {
 		fmt.Println("one hop adjustment")
-		i := 0
+
 		for len(n.AdjustingNodes) > 0 {
 			n.adaptSubpartition(layer)
-			i++
+
 		}
 		n.adjustSubpartition(layer)
 
@@ -302,7 +302,7 @@ func (n *Node) adaptSubpartition(layer int) {
 	adjNode := n.AdjustingNodes[0]
 
 	idleRectangles := n.findIdleRectangles(layer)
-
+	// fmt.Println(idleRectangles)
 	found := false
 
 	for _, rect := range idleRectangles {
@@ -344,7 +344,9 @@ func (n *Node) adaptSubpartition(layer int) {
 
 		for _, c := range childrenSlice {
 			n.AdjustingNodes = append(n.AdjustingNodes, c.ID)
+			fmt.Println("trying to move", c.ID)
 			idleRectangles = n.findIdleRectangles(layer)
+			// fmt.Println(idleRectangles)
 
 			for _, rect := range idleRectangles {
 				if rect[1]-rect[0] >= n.Children[adjNode].Interface[layer][0] &&
@@ -355,10 +357,13 @@ func (n *Node) adaptSubpartition(layer int) {
 						rect[2], rect[2] + n.Children[adjNode].Interface[layer][1]}
 					found = true
 					n.AdjustingNodes = append(n.AdjustingNodes[:0], n.AdjustingNodes[1:]...)
-					n.AdjustingNodes = append(n.AdjustingNodes, c.ID)
+
 					return
 				}
 			}
+
+			// n.AdjustingNodes = append(n.AdjustingNodes[:1], n.AdjustingNodes[2:]...)
+
 		}
 
 	}
@@ -415,14 +420,17 @@ func (n *Node) findIdleRectangles(layer int) [][]int {
 					}
 				}
 				for xx := xCur; xx < n.Interface[layer][0]; xx++ {
-					if bitmap[yCur]<<xx&0x80000000 != 0 {
-						xEnd = xx
-						break
+					allZero := true
+					for yyy := yStart; yyy < yEnd; yyy++ {
+						if bitmap[yyy]<<xx&0x80000000 != 0 {
+							allZero = false
+						}
 					}
-					if xx == n.Interface[layer][0]-1 {
-						xEnd = xx + 1
+					if allZero == true {
+						xEnd++
 					}
 				}
+
 				duplicated := false
 				for _, rect := range idleRectangles {
 					if xStart >= rect[0] && xEnd <= rect[1] && yStart >= rect[2] && yEnd <= rect[3] {
