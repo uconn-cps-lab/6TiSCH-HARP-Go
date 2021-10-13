@@ -53,7 +53,8 @@ typedef struct
     uint16_t partition_center; // to copy an uplink cell to a downlink cell
     uint16_t partition_up_end; // uplink partition end (right edge)
     uint8_t traffic_fwd;
-    uint8_t adjustingNodes[2];
+    uint8_t adjustingNodes[MAX_CHILDREN_NUM];
+    int8_t adjustingNodesCnt;
     uint8_t adjustingLayer;
     uint8_t relocatedCnt;
     HARP_interface_t iface[MAX_HOP + 1];
@@ -78,7 +79,22 @@ uint8_t changeInterface();
 uint8_t subpartitionAdjustment();
 uint8_t findIdleRectangularAreas(uint8_t idleRectangles[16][4]);
 
-int sortChildrenByIfaceTs(const void *a, const void *b)
+int sortAdjNodesByIfaceTsDec(const void *a, const void *b)
+{
+    uint8_t uint8_a = *((uint8_t *)a);
+    uint8_t uint8_b = *((uint8_t *)b);
+    uint8_t x, y = 0;
+    for (uint8_t i = 0; i < MAX_CHILDREN_NUM; i++)
+    {
+        if (HARP_children[i].id == uint8_a)
+            x = i;
+        if (HARP_children[i].id == uint8_b)
+            y = i;
+    }
+    return (HARP_children[y].iface[cur_sort_layer].ts - HARP_children[x].iface[cur_sort_layer].ts);
+}
+
+int sortChildrenByIfaceTsDec(const void *a, const void *b)
 {
     return ((HARP_child_t *)b)->iface[cur_sort_layer].ts - ((HARP_child_t *)a)->iface[cur_sort_layer].ts;
 }
@@ -102,10 +118,10 @@ int init()
     HARP_self.children_cnt = 7;
 
     uint8_t childrenIface[7][2] = {{3, 1}, {5, 2}, {3, 1}, {4, 1}, {1, 1}, {4, 2}, {6, 2}};
-
+    uint8_t childID[7] = {5, 11, 14, 26, 30, 62, 63};
     for (uint8_t i = 0; i < 7; i++)
     {
-        HARP_children[i].id = i + 2;
+        HARP_children[i].id = childID[i];
         HARP_children[i].iface[1].ts = childrenIface[i][0];
         HARP_children[i].iface[1].ch = childrenIface[i][1];
     }
@@ -117,7 +133,7 @@ int init()
                HARP_children[i].sp_rel[1].ch_start, HARP_children[i].sp_rel[1].ch_end);
     }
     // uint8_t childrenIface[7][2] = {{3, 1}, {5, 2}, {3, 1}, {4, 1}, {1, 1}, {4, 2}, {6, 2}};
-
+    HARP_self.iface[1].ch = 9;
     return 0;
 }
 
@@ -125,11 +141,12 @@ int main()
 {
     init();
     changeInterface();
-    while (HARP_self.adjustingNodes[0] != 0)
+    while (HARP_self.adjustingNodesCnt > 0)
     {
         subpartitionAdjustment();
     }
-    // findIdleRectangularAreas();
+    uint8_t idleRectangles[16][4] = {};
+    uint8_t rectCnt = findIdleRectangularAreas(idleRectangles);
     return 1;
 }
 
@@ -137,19 +154,29 @@ uint8_t changeInterface()
 {
     for (uint8_t i = 0; i < MAX_CHILDREN_NUM; i++)
     {
-        if (HARP_children[i].id == 3)
+        if (HARP_children[i].id == 11)
         {
             HARP_children[i].iface[1].ts = 6;
-            HARP_children[i].iface[1].ch = 2;
+            HARP_children[i].iface[1].ch = 3;
         }
     }
-    HARP_self.adjustingNodes[0] = 3;
+    HARP_self.adjustingNodes[0] = 11;
+    HARP_self.adjustingNodesCnt = 1;
     HARP_self.adjustingLayer = 1;
     return 1;
 }
 
 uint8_t subpartitionAdjustment()
 {
+    printf("*****adjusting nodes: [");
+    cur_sort_layer = HARP_self.adjustingLayer;
+    qsort(HARP_self.adjustingNodes, MAX_CHILDREN_NUM, sizeof(uint8_t), sortAdjNodesByIfaceTsDec);
+
+    for (uint8_t i = 0; i < MAX_CHILDREN_NUM; i++)
+    {
+        printf("%d,", HARP_self.adjustingNodes[i]);
+    }
+    printf("]\n");
     HARP_interface_t adjIface;
     for (uint8_t i = 0; i < MAX_CHILDREN_NUM; i++)
     {
@@ -167,13 +194,13 @@ uint8_t subpartitionAdjustment()
     uint8_t idleRectangles[16][4] = {};
 
     uint8_t rectCnt = findIdleRectangularAreas(idleRectangles);
-    printf("idle rectangles: ");
-    for (uint8_t i = 0; i < rectCnt; i++)
-    {
-        printf("[%d,%d,%d,%d],", idleRectangles[i][0], idleRectangles[i][1],
-               idleRectangles[i][2], idleRectangles[i][3]);
-    }
-    printf("\n");
+    // printf("idle rectangles: ");
+    // for (uint8_t i = 0; i < rectCnt; i++)
+    // {
+    //     printf("[%d,%d,%d,%d],", idleRectangles[i][0], idleRectangles[i][1],
+    //            idleRectangles[i][2], idleRectangles[i][3]);
+    // }
+    // printf("\n");
 
     uint8_t found = 0;
     for (uint8_t i = 0; i < rectCnt; i++)
@@ -186,7 +213,7 @@ uint8_t subpartitionAdjustment()
                    HARP_self.adjustingNodes[0], HARP_self.adjustingLayer, adjIface.ts, adjIface.ch,
                    idleRectangles[i][0], idleRectangles[i][1], idleRectangles[i][2], idleRectangles[i][3]);
             // update rel_sp
-            for (uint8_t c = 0; c <= HARP_self.children_cnt; c++)
+            for (uint8_t c = 0; c < MAX_CHILDREN_NUM; c++)
             {
                 if (HARP_self.adjustingNodes[0] == HARP_children[c].id)
                 {
@@ -197,7 +224,11 @@ uint8_t subpartitionAdjustment()
                     break;
                 }
             }
-            HARP_self.adjustingNodes[0] = 0;
+            for (uint8_t j = 0; j < MAX_CHILDREN_NUM-1; j++)
+            {
+                HARP_self.adjustingNodes[j] = HARP_self.adjustingNodes[j + 1];
+            }
+            HARP_self.adjustingNodesCnt--;
             return 1;
         }
     }
@@ -210,19 +241,37 @@ uint8_t subpartitionAdjustment()
 
         for (uint8_t c = 0; c < MAX_CHILDREN_NUM; c++)
         {
-            if (HARP_children[c].iface[HARP_self.adjustingLayer].ts == 0 || HARP_children[c].id == HARP_self.adjustingNodes[0])
+            uint8_t skip = 0;
+            if (HARP_children[c].iface[HARP_self.adjustingLayer].ts == 0)
+            {
+                skip = 1;
+            }
+            else
+            {
+                for (uint8_t j = 0; j < HARP_self.adjustingNodesCnt; j++)
+                {
+                    if (HARP_children[c].id == HARP_self.adjustingNodes[j])
+                    {
+                        skip = 1;
+                        break;
+                    }
+                }
+            }
+            if (skip)
                 continue;
-            printf("[%d,#%d]\n", c, HARP_children[c].id);
-            HARP_self.adjustingNodes[1] = HARP_children[c].id;
+
+            printf("trying to move %d\n", HARP_children[c].id);
+            HARP_self.adjustingNodes[HARP_self.adjustingNodesCnt] = HARP_children[c].id;
+            HARP_self.adjustingNodesCnt++;
 
             uint8_t rectCnt = findIdleRectangularAreas(idleRectangles);
-            printf("%d idle rectangles: ", c);
-            for (uint8_t i = 0; i < rectCnt; i++)
-            {
-                printf("[%d,%d,%d,%d],", idleRectangles[i][0], idleRectangles[i][1],
-                       idleRectangles[i][2], idleRectangles[i][3]);
-            }
-            printf("\n");
+            // printf("idle rectangles: ");
+            // for (uint8_t i = 0; i < rectCnt; i++)
+            // {
+            //     printf("[%d,%d,%d,%d],", idleRectangles[i][0], idleRectangles[i][1],
+            //            idleRectangles[i][2], idleRectangles[i][3]);
+            // }
+            // printf("\n");
 
             uint8_t found = 0;
             for (uint8_t i = 0; i < rectCnt; i++)
@@ -235,19 +284,22 @@ uint8_t subpartitionAdjustment()
                            HARP_self.adjustingNodes[0], HARP_self.adjustingLayer, adjIface.ts, adjIface.ch,
                            idleRectangles[i][0], idleRectangles[i][1], idleRectangles[i][2], idleRectangles[i][3]);
                     // update rel_sp
-                    for (uint8_t c = 0; c <= HARP_self.children_cnt; c++)
+                    for (uint8_t cc = 0; cc < MAX_CHILDREN_NUM; cc++)
                     {
-                        if (HARP_self.adjustingNodes[0] == HARP_children[c].id)
+                        if (HARP_self.adjustingNodes[0] != 0 && HARP_self.adjustingNodes[0] == HARP_children[cc].id)
                         {
-                            HARP_children[c].sp_rel[HARP_self.adjustingLayer].ts_start = idleRectangles[i][0];
-                            HARP_children[c].sp_rel[HARP_self.adjustingLayer].ts_end = idleRectangles[i][0] + adjIface.ts;
-                            HARP_children[c].sp_rel[HARP_self.adjustingLayer].ch_start = idleRectangles[i][2];
-                            HARP_children[c].sp_rel[HARP_self.adjustingLayer].ch_end = idleRectangles[i][2] + adjIface.ch;
+                            HARP_children[cc].sp_rel[HARP_self.adjustingLayer].ts_start = idleRectangles[i][0];
+                            HARP_children[cc].sp_rel[HARP_self.adjustingLayer].ts_end = idleRectangles[i][0] + adjIface.ts;
+                            HARP_children[cc].sp_rel[HARP_self.adjustingLayer].ch_start = idleRectangles[i][2];
+                            HARP_children[cc].sp_rel[HARP_self.adjustingLayer].ch_end = idleRectangles[i][2] + adjIface.ch;
                             break;
                         }
                     }
-                    HARP_self.adjustingNodes[0] = HARP_self.adjustingNodes[1];
-                    HARP_self.adjustingNodes[1] = 0;
+                    for (uint8_t j = 0; j < MAX_CHILDREN_NUM-1; j++)
+                    {
+                        HARP_self.adjustingNodes[j] = HARP_self.adjustingNodes[j + 1];
+                    }
+                    HARP_self.adjustingNodesCnt--;
                     return 1;
                 }
             }
@@ -273,10 +325,25 @@ uint8_t findIdleRectangularAreas(uint8_t idleRectangles[16][4])
 
     for (uint8_t i = 0; i < MAX_CHILDREN_NUM; i++)
     {
-        if (HARP_children[i].iface[layer].ts == 0 ||
-            HARP_children[i].id == HARP_self.adjustingNodes[0] || HARP_children[i].id == HARP_self.adjustingNodes[1])
+        uint8_t skip = 0;
+        if (HARP_children[i].iface[layer].ts == 0)
+        {
+            skip = 1;
+        }
+        else
+        {
+            for (uint8_t j = 0; j < HARP_self.adjustingNodesCnt; j++)
+            {
+                if (HARP_children[i].id == HARP_self.adjustingNodes[j])
+                {
+                    skip = 1;
+                    break;
+                }
+            }
+        }
+        if (skip)
             continue;
-        printf("child id: %d\n", HARP_children[i].id);
+
         for (uint8_t y = HARP_children[i].sp_rel[layer].ch_start; y < HARP_children[i].sp_rel[layer].ch_end; y++)
         {
             for (uint8_t x = HARP_children[i].sp_rel[layer].ts_start; x < HARP_children[i].sp_rel[layer].ts_end; x++)
@@ -286,11 +353,11 @@ uint8_t findIdleRectangularAreas(uint8_t idleRectangles[16][4])
         }
     }
 
-    for (int8_t i = HARP_self.iface[layer].ch - 1; i >= 0; i--)
-    {
-        print_binary(rectBitmap[i]);
-        printf("\n");
-    }
+    // for (int8_t i = HARP_self.iface[layer].ch - 1; i >= 0; i--)
+    // {
+    //     print_binary(rectBitmap[i]);
+    //     printf("\n");
+    // }
 
     for (uint8_t yCur = 0; yCur < HARP_self.iface[layer].ch; yCur++)
     {
@@ -316,15 +383,16 @@ uint8_t findIdleRectangularAreas(uint8_t idleRectangles[16][4])
                 }
                 for (uint8_t xx = xCur; xx < HARP_self.iface[layer].ts; xx++)
                 {
-                    if ((rectBitmap[yCur] << xx & 0x80000000) != 0)
+                    uint8_t allZero = 1;
+                    for (uint8_t yyy = yCur; yyy < yEnd; yyy++)
                     {
-                        xEnd = xx;
-                        break;
+                        if ((rectBitmap[yyy] << xx & 0x80000000) != 0)
+                        {
+                            allZero = 0;
+                        }
                     }
-                    if (xx == HARP_self.iface[layer].ts - 1)
-                    {
-                        xEnd = xx + 1;
-                    }
+                    if (allZero == 1)
+                        xEnd++;
                 }
 
                 uint8_t duplicated = 0;
@@ -370,7 +438,7 @@ uint8_t interfaceComposition()
         if (children_cnt == 0)
             continue;
 
-        qsort(HARP_children, MAX_CHILDREN_NUM, sizeof(HARP_child_t), sortChildrenByIfaceTs);
+        qsort(HARP_children, MAX_CHILDREN_NUM, sizeof(HARP_child_t), sortChildrenByIfaceTsDec);
         HARP_children[0].sp_rel[layer].ts_start = 0;
         HARP_children[0].sp_rel[layer].ts_end = HARP_children[0].iface[layer].ts;
         HARP_children[0].sp_rel[layer].ch_start = 0;
