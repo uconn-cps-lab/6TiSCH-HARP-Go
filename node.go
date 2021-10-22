@@ -799,14 +799,14 @@ func (n *Node) packingBestFitSkyline(layer int) {
 // map logical sub-partition offset to physcial sub-partition locations
 func (n *Node) allocateSubpartition() {
 	if n.ID == 0 {
-		var gap = 1
+		var gap = 0
 		var slotIdx = 0
 		for l := MaxLayer; l > 0; l-- {
 			if n.Interface[l] == nil {
 				continue
 			}
 			// n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + n.Interface[l][0], MAX_CHANNEL + 1 - n.Interface[l][1], MAX_CHANNEL + 1}
-			n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + n.Interface[l][0], 1, MAX_CHANNEL + 1}
+			n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + n.Interface[l][0], 1, n.Interface[l][1] + 1}
 			slotIdx += gap + n.Interface[l][0]
 		}
 	}
@@ -820,8 +820,8 @@ func (n *Node) allocateSubpartition() {
 				c.SubPartitionAbs[l] = []int{
 					n.SubPartitionAbs[l][0] + c.SubPartitionRel[l][0],
 					n.SubPartitionAbs[l][0] + c.SubPartitionRel[l][1],
-					n.SubPartitionAbs[l][3] - c.SubPartitionRel[l][3],
-					n.SubPartitionAbs[l][3] - c.SubPartitionRel[l][2],
+					n.SubPartitionAbs[l][2] + c.SubPartitionRel[l][2],
+					n.SubPartitionAbs[l][2] + c.SubPartitionRel[l][3],
 				}
 
 			}

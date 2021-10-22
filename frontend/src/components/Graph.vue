@@ -12,6 +12,7 @@ import "echarts/lib/component/toolbox";
 import "echarts/lib/component/tooltip";
 
 // import t from "./topology_121_part.json"
+import nodes from "./topo.json";
 
 export default {
   components: {
@@ -88,7 +89,8 @@ export default {
           lineStyle:{width:5}
         } 
       }
-      for(var i=1;i<Object.keys(this.topo).length;i++) {
+      for(var i=3;i<Object.keys(this.topo).length+2;i++) {
+        // if
         var node = i
         var parent = this.topo[node].parent
 
@@ -105,10 +107,14 @@ export default {
 
   },
   mounted() {
-    this.$EventBus.$on("topo", (topo) => {
-      this.topo = topo.data
-      this.draw()
-    });
+    this.topo = nodes
+    this.draw()
+    window.console.log(nodes)
+    // this.$EventBus.$on("topo", (topo) => {
+    //   this.topo = topo.data
+    //   this.draw()
+    //   window.console.log(123,this.topo)
+    // });
 
     this.$EventBus.$on("hp_res", (res) => {
       this.hp = res

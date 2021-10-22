@@ -14,7 +14,7 @@
     </vs-row>
     
     <vs-row>
-      <vs-col style="z-index:99" vs-offset="0.2" vs-w="7.8">  
+      <vs-col style="z-index:99" vs-offset="0.2" vs-w="10">  
         <Table/>
       </vs-col>
       <vs-col style="z-index:99" vs-offset="0.2" vs-w="3.6">  
