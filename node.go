@@ -306,7 +306,7 @@ func (n *Node) adaptSubpartition(layer int) {
 	fmt.Println("adjusting", n.AdjustingNodes)
 	adjNode := n.AdjustingNodes[0]
 	idleRectangles := n.findIdleRectangles(layer)
-	// fmt.Println(idleRectangles)
+	fmt.Println(idleRectangles)
 	found := false
 
 	for _, rect := range idleRectangles {
@@ -394,28 +394,28 @@ func (n *Node) findIdleRectangles(layer int) [][]int {
 	}
 
 	// bitmap version
-	bitmap := [15]uint32{}
+	bitmap := [15]uint64{}
 	for _, sp := range fixedNodesRelSp {
 		for y := sp[2]; y < sp[3]; y++ {
 			for x := sp[0]; x < sp[1]; x++ {
-				bitmap[y] |= 0x80000000 >> x
+				bitmap[y] |= 0x8000000000000000 >> x
 			}
 		}
 	}
 	// for i := len(bitmap) - 1; i >= 0; i-- {
-	// 	fmt.Printf("%032b\n", bitmap[i])
+	// 	fmt.Printf("%064b\n", bitmap[i])
 	// }
 
 	for yCur := 0; yCur < n.Interface[layer][1]; yCur++ {
 		for xCur := 0; xCur < n.Interface[layer][0]; xCur++ {
-			if bitmap[yCur]<<xCur&0x80000000 == 0 {
+			if (bitmap[yCur]<<xCur)&0x8000000000000000 == 0 {
 				// endPoints = append(endPoints, []int{xCur, yCur})
 				xStart := xCur
 				xEnd := xCur
 				yStart := yCur
 				yEnd := yCur
 				for yy := yCur; yy < n.Interface[layer][1]; yy++ {
-					if bitmap[yy]<<xCur&0x80000000 != 0 {
+					if (bitmap[yy]<<xCur)&0x8000000000000000 != 0 {
 						yEnd = yy
 						break
 					}
@@ -423,11 +423,13 @@ func (n *Node) findIdleRectangles(layer int) [][]int {
 						yEnd = yy + 1
 					}
 				}
+			L:
 				for xx := xCur; xx < n.Interface[layer][0]; xx++ {
 					allZero := true
 					for yyy := yStart; yyy < yEnd; yyy++ {
-						if bitmap[yyy]<<xx&0x80000000 != 0 {
+						if (bitmap[yyy]<<xx)&0x8000000000000000 != 0 {
 							allZero = false
+							break L
 						}
 					}
 					if allZero == true {
@@ -806,7 +808,8 @@ func (n *Node) allocateSubpartition() {
 				continue
 			}
 			// n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + n.Interface[l][0], MAX_CHANNEL + 1 - n.Interface[l][1], MAX_CHANNEL + 1}
-			n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + n.Interface[l][0], 1, n.Interface[l][1] + 1}
+			// n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + n.Interface[l][0], 1, n.Interface[l][1] + 1}
+			n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + n.Interface[l][0], 1, 12}
 			slotIdx += gap + n.Interface[l][0]
 		}
 	}
@@ -820,8 +823,8 @@ func (n *Node) allocateSubpartition() {
 				c.SubPartitionAbs[l] = []int{
 					n.SubPartitionAbs[l][0] + c.SubPartitionRel[l][0],
 					n.SubPartitionAbs[l][0] + c.SubPartitionRel[l][1],
-					n.SubPartitionAbs[l][2] + c.SubPartitionRel[l][2],
-					n.SubPartitionAbs[l][2] + c.SubPartitionRel[l][3],
+					n.SubPartitionAbs[l][3] - c.SubPartitionRel[l][3],
+					n.SubPartitionAbs[l][3] - c.SubPartitionRel[l][2],
 				}
 
 			}
