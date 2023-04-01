@@ -6,7 +6,8 @@ import (
 )
 
 const (
-	MAX_CHANNEL = 16
+	MAX_CHANNEL  = 2
+	TRAFFIC_RATE = 3
 )
 
 var (
@@ -21,6 +22,10 @@ var (
 )
 
 func main() {
+	// var totalCellUtilization float64
+	var cnt float64
+	// neededCellNumbers := []int{}
+	var sum float64 = 0
 	go func() {
 		for {
 			signal := <-sig1
@@ -36,7 +41,35 @@ func main() {
 					blockers <- true
 				}
 				fmt.Println("HP finished")
-
+				// var totalNeededCell = 0
+				// for _, v := range Nodes {
+				// 	if v.ID != 0 {
+				// 		// fmt.Println(v.ID, v.Traffic)
+				// 		totalNeededCell += v.Traffic
+				// 	}
+				// }
+				// neededCellNumbers = append(neededCellNumbers, totalNeededCell)
+				// var totalRequestedCell = 0
+				// for _, v := range Nodes[0].SubPartitionAbs {
+				// 	area := (v[1] - v[0]) * (v[3] - v[2])
+				// 	totalRequestedCell += area
+				// 	// fmt.Println(v, area)
+				// }
+				cnt++
+				// cu := float64(totalNeededCell) / float64(totalRequestedCell)
+				// fmt.Printf("#%d ", int(cnt))
+				// fmt.Printf("Traffic rate: %d", 1)
+				// fmt.Printf(", needed cell: %d", totalNeededCell)
+				// fmt.Printf(", requested cell: %d", totalRequestedCell)
+				var collision = float64(Nodes[0].SubPartitionAbs[1][1]-200) / float64(Nodes[0].SubPartitionAbs[1][0]*MAX_CHANNEL)
+				fmt.Println(collision)
+				sum += collision
+				fmt.Println("avg:", sum/cnt)
+				// fmt.Println(Nodes[0].SubPartitionAbs[1][1]-200, Nodes[0].SubPartitionAbs[1][0])
+				// fmt.Println(", cell utilization:", cu)
+				// totalCellUtilization += cu
+				// fmt.Println("total cu:", totalCellUtilization/cnt)
+				// fmt.Println(neededCellNumbers)
 				wsLogger <- wsLog{
 					WS_LOG_MSG,
 					"HP finished",

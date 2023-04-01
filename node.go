@@ -36,7 +36,7 @@ type AdjustingNode struct {
 }
 
 func NewNode(id, parent, layer int) *Node {
-	var traffic = 1
+	var traffic = TRAFFIC_RATE
 	if id == 0 {
 		traffic = 0
 	}
@@ -109,6 +109,7 @@ func (n *Node) Run(blocker chan bool) {
 		// top-down allocate sub-partitions
 		if n.ID == 0 {
 			n.allocateSubpartition()
+			// fmt.Println(n.Traffic)
 		} else {
 			<-n.sigWaitAllocatedSubpartition
 			close(n.sigWaitAllocatedSubpartition)
@@ -256,9 +257,15 @@ func (n *Node) compositeInterface(layer int) {
 			// n.packingGreedyChannel(l)
 			// n.packingFFDH(l)
 			n.packingBestFitSkyline(l)
+			if len(n.Interface[l]) > 0 {
+				// n.Interface[l][0] += 5
+				// n.Interface[l][0] += 2
+			}
+
 		}
 	} else {
 		n.packingBestFitSkyline(layer)
+
 	}
 }
 
@@ -697,6 +704,7 @@ func (n *Node) packingBestFitSkyline(layer int) {
 	if channels > MAX_CHANNEL {
 		slots = 0
 		channels = MAX_CHANNEL
+		fmt.Println("exceeds channel limit")
 
 		childrenSlice = []Child{}
 		for _, c := range n.Children {
@@ -800,17 +808,18 @@ func (n *Node) packingBestFitSkyline(layer int) {
 
 // map logical sub-partition offset to physcial sub-partition locations
 func (n *Node) allocateSubpartition() {
+	var redundent = 0
 	if n.ID == 0 {
-		var gap = 0
+
 		var slotIdx = 0
 		for l := MaxLayer; l > 0; l-- {
 			if n.Interface[l] == nil {
 				continue
 			}
 			// n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + n.Interface[l][0], MAX_CHANNEL + 1 - n.Interface[l][1], MAX_CHANNEL + 1}
-			// n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + n.Interface[l][0], 1, n.Interface[l][1] + 1}
-			n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + n.Interface[l][0], 1, 12}
-			slotIdx += gap + n.Interface[l][0]
+			n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + n.Interface[l][0], 1, n.Interface[l][1] + 1}
+			// n.SubPartitionAbs[l] = []int{slotIdx, slotIdx + n.Interface[l][0] + redundent, 1, MAX_CHANNEL + 1}
+			slotIdx += redundent + n.Interface[l][0]
 		}
 	}
 
@@ -823,8 +832,8 @@ func (n *Node) allocateSubpartition() {
 				c.SubPartitionAbs[l] = []int{
 					n.SubPartitionAbs[l][0] + c.SubPartitionRel[l][0],
 					n.SubPartitionAbs[l][0] + c.SubPartitionRel[l][1],
-					n.SubPartitionAbs[l][3] - c.SubPartitionRel[l][3],
-					n.SubPartitionAbs[l][3] - c.SubPartitionRel[l][2],
+					n.SubPartitionAbs[l][2] + c.SubPartitionRel[l][2],
+					n.SubPartitionAbs[l][2] + c.SubPartitionRel[l][3],
 				}
 
 			}

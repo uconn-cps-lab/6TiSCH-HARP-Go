@@ -94,8 +94,8 @@ import "echarts/lib/chart/effectScatter";
 import "echarts/lib/component/markLine";
 import "echarts/lib/component/toolbox";
 
-// import nodes from "./nodes64.json";
-import nodes from "./topo.json";
+import nodes from "./nodes-81-2.json";
+// import nodes from "./topo.json";
 // import noiseList from "./noiseList.json";
 
 
@@ -108,15 +108,15 @@ export default {
   },
   data() {
     return {
-      loadTopo: true,
+      loadTopo: false,
       gwPos: [],
-      sizeX: 16,
-      sizeY: 16,
-      nodesNumber: 64, // include gateway
+      sizeX: 18,
+      sizeY: 18,
+      nodesNumber: 50, // include gateway
       maxHop: 5,
-      txRange: 9, // in square
+      txRange: 16, // in square
       childrenCnt: {0:0},
-      parent_capacity:3, // except gateway
+      parent_capacity:5, // except gateway
       kicked: [],
       history_cp: [],
       history_cl: [],
@@ -661,15 +661,15 @@ export default {
     },
   },
   mounted() {
-    this.nodes = nodes
+    // this.nodes = nodes
     window.grid = this;
-    
-    this.$api.partition.postTopo(this.nodes).then(
-      ()=> {
-        window.console.log(this.nodes)
-        this.$EventBus.$emit("postTopo",true)
-      }
-    )
+    this.draw();
+    // this.$api.partition.postTopo(this.nodes).then(
+    //   ()=> {
+    //     window.console.log(this.nodes)
+    //     this.$EventBus.$emit("postTopo",true)
+    //   }
+    // )
     this.$EventBus.$emit("topo", { data: this.nodes, seq: this.join_seq });
     // this.$EventBus.$on("init", () => {
     // this.draw();
